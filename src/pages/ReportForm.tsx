@@ -13,6 +13,7 @@ import RepeatableList from "@/components/RepeatableList";
 import RepeatableTable from "@/components/RepeatableTable";
 import MultiSelectCheckbox from "@/components/MultiSelectCheckbox";
 import SignatureField from "@/components/SignatureField";
+import KatastrMap from "@/components/KatastrMap";
 import { generatePDF } from "@/lib/pdfExport";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -60,6 +61,7 @@ export default function ReportForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,7 +107,23 @@ export default function ReportForm() {
 
   const set = (key: keyof Report, val: unknown) => setForm(f => ({ ...f, [key]: val }));
 
+  const formatPhone = (value: string): string => {
+    const digits = value.replace(/[^\d]/g, "").slice(0, 12);
+    if (digits.length === 0) return "";
+    if (digits.length <= 3) return `+${digits}`;
+    return `+${digits.slice(0, 3)} ${digits.slice(3)}`;
+  };
+
+  const isValidPhone = (value: string | null | undefined): boolean => {
+    if (!value || value.trim() === "") return true;
+    return /^\+\d{3} \d{9}$/.test(value);
+  };
+
   const handleSave = async () => {
+    if (!isValidPhone(form.telefon_technika) || !isValidPhone(form.telefon_montazni_firmy)) {
+      toast({ title: "Chyba", description: "Telefonní číslo musí být ve formátu +XXX XXXXXXXXX.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       let reportId = id;
@@ -161,20 +179,27 @@ export default function ReportForm() {
   };
 
   const handleExportPDF = async () => {
-    if (isEdit && id) {
-      const { data: report } = await supabase.from("inspection_reports").select("*").eq("id", id).single();
-      if (report) {
-        const std = standards.map((norma, i) => ({ id: "", report_id: id, norma, sort_order: i }));
-        const inst = instruments.map((r, i) => ({ id: "", report_id: id, ...r, sort_order: i }));
-        const meas = measurements.map((r, i) => ({ id: "", report_id: id, ...r, sort_order: i }));
-        generatePDF(report, std, inst, meas);
+    setExporting(true);
+    try {
+      let reportData: Report;
+      if (isEdit && id) {
+        const { data } = await supabase.from("inspection_reports").select("*").eq("id", id).single();
+        if (!data) throw new Error("Report not found");
+        reportData = data;
+      } else {
+        reportData = { ...form, id: "", created_at: "", updated_at: "" } as Report;
       }
-    } else {
-      const fakeReport = { ...form, id: "", created_at: "", updated_at: "" } as Report;
-      const std = standards.map((norma, i) => ({ id: "", report_id: "", norma, sort_order: i }));
-      const inst = instruments.map((r, i) => ({ id: "", report_id: "", ...r, sort_order: i }));
-      const meas = measurements.map((r, i) => ({ id: "", report_id: "", ...r, sort_order: i }));
-      generatePDF(fakeReport, std, inst, meas);
+      const rid = id || "";
+      const std = standards.map((norma, i) => ({ id: "", report_id: rid, norma, sort_order: i }));
+      const inst = instruments.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i }));
+      const meas = measurements.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i }));
+      await generatePDF(reportData, std, inst, meas);
+      toast({ title: "PDF staženo", description: "Revizní zpráva byla exportována do PDF." });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Chyba", description: "Nepodařilo se vygenerovat PDF.", variant: "destructive" });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -214,8 +239,8 @@ export default function ReportForm() {
           <span className="font-bold text-foreground">LPS Revize</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportPDF}>
-            <Download className="w-4 h-4 mr-1" /> PDF
+          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} PDF
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
@@ -264,7 +289,10 @@ export default function ReportForm() {
               <Input value={form.evidencni_cislo || ""} onChange={e => set("evidencni_cislo", e.target.value)} />
             </FField>
             <FField label="Telefon revizního technika">
-              <Input value={form.telefon_technika || ""} onChange={e => set("telefon_technika", e.target.value)} placeholder="+420..." />
+              <Input type="tel" inputMode="numeric" value={form.telefon_technika || ""} onChange={e => set("telefon_technika", formatPhone(e.target.value))} placeholder="+420 123456789" maxLength={14} />
+              {form.telefon_technika && !isValidPhone(form.telefon_technika) && (
+                <p className="text-xs text-destructive mt-1">Formát: +XXX XXXXXXXXX (předvolba + 9 číslic)</p>
+              )}
             </FField>
             <FField label="Adresa revizního technika" full>
               <Input value={form.adresa_technika || ""} onChange={e => set("adresa_technika", e.target.value)} />
@@ -298,8 +326,20 @@ export default function ReportForm() {
               <Input value={form.montazni_firma || ""} onChange={e => set("montazni_firma", e.target.value)} />
             </FField>
             <FField label="Telefon montážní firmy">
-              <Input value={form.telefon_montazni_firmy || ""} onChange={e => set("telefon_montazni_firmy", e.target.value)} placeholder="+420..." />
+              <Input type="tel" inputMode="numeric" value={form.telefon_montazni_firmy || ""} onChange={e => set("telefon_montazni_firmy", formatPhone(e.target.value))} placeholder="+420 123456789" maxLength={14} />
+              {form.telefon_montazni_firmy && !isValidPhone(form.telefon_montazni_firmy) && (
+                <p className="text-xs text-destructive mt-1">Formát: +XXX XXXXXXXXX (předvolba + 9 číslic)</p>
+              )}
             </FField>
+          </div>
+          <div className="mt-4">
+            <KatastrMap
+              address={form.adresa_objektu}
+              imageUrl={form.katastr_map_url}
+              annotations={form.katastr_annotations}
+              onImageChange={(url) => set("katastr_map_url", url)}
+              onAnnotationsChange={(json) => set("katastr_annotations", json)}
+            />
           </div>
         </SectionCard>
 
@@ -584,8 +624,8 @@ export default function ReportForm() {
           <Button variant="outline" onClick={() => navigate("/")} disabled={saving}>
             Zrušit
           </Button>
-          <Button variant="outline" onClick={handleExportPDF}>
-            <Download className="w-4 h-4 mr-1" /> Exportovat PDF
+          <Button variant="outline" onClick={handleExportPDF} disabled={exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} Exportovat PDF
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}

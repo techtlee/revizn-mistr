@@ -33,6 +33,8 @@ export type Database = {
           elektricka_zarizeni_popis: string | null
           evidencni_cislo: string | null
           id: string
+          katastr_annotations: string | null
+          katastr_map_url: string | null
           krytina_strechy: string | null
           montazni_firma: string | null
           nazev_objektu: string | null
@@ -90,6 +92,8 @@ export type Database = {
           elektricka_zarizeni_popis?: string | null
           evidencni_cislo?: string | null
           id?: string
+          katastr_annotations?: string | null
+          katastr_map_url?: string | null
           krytina_strechy?: string | null
           montazni_firma?: string | null
           nazev_objektu?: string | null
@@ -147,6 +151,8 @@ export type Database = {
           elektricka_zarizeni_popis?: string | null
           evidencni_cislo?: string | null
           id?: string
+          katastr_annotations?: string | null
+          katastr_map_url?: string | null
           krytina_strechy?: string | null
           montazni_firma?: string | null
           nazev_objektu?: string | null
