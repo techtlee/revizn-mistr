@@ -2,95 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 213 75% 32%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 213 30% 92%;
+    --secondary-foreground: 213 75% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 15% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 213 60% 88%;
+    --accent-foreground: 213 75% 25%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 214 20% 86%;
+    --input: 214 20% 86%;
+    --ring: 213 75% 32%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-background: 213 40% 22%;
+    --sidebar-foreground: 213 20% 88%;
+    --sidebar-primary: 213 75% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 213 35% 30%;
+    --sidebar-accent-foreground: 213 20% 95%;
+    --sidebar-border: 213 30% 30%;
+    --sidebar-ring: 213 75% 55%;
+
+    /* LPS App custom tokens */
+    --section-header: 213 40% 22%;
+    --section-header-fg: 0 0% 100%;
+    --section-bg: 213 30% 97%;
+    --table-header: 213 30% 92%;
+    --badge-ok: 142 71% 45%;
+    --badge-warning: 38 92% 50%;
+    --badge-danger: 0 72% 51%;
+    --nav-height: 64px;
   }
 }
 
@@ -101,5 +62,58 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  h1, h2, h3 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  .section-card {
+    @apply bg-card rounded-lg border shadow-sm overflow-hidden;
+  }
+
+  .section-header {
+    background: hsl(var(--section-header));
+    color: hsl(var(--section-header-fg));
+    @apply px-6 py-3 font-semibold text-sm uppercase tracking-wider;
+  }
+
+  .section-body {
+    @apply p-6 bg-card;
+  }
+
+  .form-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  .form-grid-3 {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
+  }
+
+  .repeatable-table {
+    @apply w-full border-collapse;
+  }
+
+  .repeatable-table th {
+    background: hsl(var(--table-header));
+    @apply text-left px-3 py-2 text-sm font-semibold text-foreground border-b;
+  }
+
+  .repeatable-table td {
+    @apply px-2 py-1 border-b border-border;
+  }
+
+  .nav-bar {
+    height: var(--nav-height);
+    @apply fixed top-0 left-0 right-0 z-50 bg-card border-b shadow-sm flex items-center px-6 gap-4;
+  }
+
+  .page-content {
+    padding-top: calc(var(--nav-height) + 1.5rem);
+    @apply px-4 md:px-8 pb-16 max-w-5xl mx-auto;
   }
 }
