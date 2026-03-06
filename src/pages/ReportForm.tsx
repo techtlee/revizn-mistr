@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -27,14 +28,16 @@ const EMPTY_MEASUREMENT = { id: "", report_id: "", oznaceni_svodu: null, odpor_z
 
 function SectionCard({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
   return (
-    <div className="section-card">
-      <div className="section-header">
-        {number}. {title}
-      </div>
-      <div className="section-body">
+    <Card className="overflow-hidden">
+      <CardHeader className="bg-primary text-primary-foreground py-3.5">
+        <CardTitle className="text-sm font-semibold uppercase tracking-wider">
+          {number}. {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-6">
         {children}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -228,23 +231,24 @@ export default function ReportForm() {
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="nav-bar">
-        <button onClick={() => navigate("/")} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/" className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0">
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Zpět</span>
-        </button>
-        <div className="flex items-center gap-2 ml-2">
+          <span className="text-sm hidden sm:inline">Zpět</span>
+        </Link>
+        <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
             <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-bold text-foreground">LPS Revize</span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting}>
-            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} PDF
+          <span className="font-bold text-foreground text-sm sm:text-base">LPS Revize</span>
+        </Link>
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="px-2 sm:px-3">
+            {exporting ? <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" /> : <Download className="w-4 h-4 sm:mr-1" />}
+            <span className="hidden sm:inline">PDF</span>
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-            {isEdit ? "Uložit změny" : "Uložit zprávu"}
+          <Button size="sm" onClick={handleSave} disabled={saving} className="px-2 sm:px-3">
+            {saving ? <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" /> : <Save className="w-4 h-4 sm:mr-1" />}
+            <span className="hidden sm:inline">{isEdit ? "Uložit změny" : "Uložit zprávu"}</span>
           </Button>
         </div>
       </nav>
@@ -620,14 +624,16 @@ export default function ReportForm() {
         </SectionCard>
 
         {/* Save button at bottom */}
-        <div className="flex justify-end gap-3 pt-4 pb-8">
-          <Button variant="outline" onClick={() => navigate("/")} disabled={saving}>
+        <div className="flex flex-wrap justify-end gap-2 sm:gap-3 pt-4 pb-8">
+          <Button variant="outline" onClick={() => navigate("/")} disabled={saving} className="flex-1 sm:flex-none">
             Zrušit
           </Button>
-          <Button variant="outline" onClick={handleExportPDF} disabled={exporting}>
-            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} Exportovat PDF
+          <Button variant="outline" onClick={handleExportPDF} disabled={exporting} className="flex-1 sm:flex-none">
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+            <span className="hidden sm:inline">Exportovat PDF</span>
+            <span className="sm:hidden">PDF</span>
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none min-w-[120px]">
             {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
             {isEdit ? "Uložit změny" : "Uložit zprávu"}
           </Button>

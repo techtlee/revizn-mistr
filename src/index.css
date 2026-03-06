@@ -6,54 +6,68 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    --background: 220 14% 96%;
+    --foreground: 220 20% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 220 20% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 220 20% 14%;
 
-    --primary: 213 75% 32%;
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 213 30% 92%;
-    --secondary-foreground: 213 75% 25%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 25%;
 
-    --muted: 210 20% 94%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 213 60% 88%;
-    --accent-foreground: 213 75% 25%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 20% 25%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 86%;
-    --input: 214 20% 86%;
-    --ring: 213 75% 32%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 83% 53%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 213 40% 22%;
-    --sidebar-foreground: 213 20% 88%;
-    --sidebar-primary: 213 75% 55%;
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 213 35% 30%;
-    --sidebar-accent-foreground: 213 20% 95%;
-    --sidebar-border: 213 30% 30%;
-    --sidebar-ring: 213 75% 55%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 221 83% 53%;
 
-    /* LPS App custom tokens */
-    --section-header: 213 40% 22%;
-    --section-header-fg: 0 0% 100%;
-    --section-bg: 213 30% 97%;
-    --table-header: 213 30% 92%;
-    --badge-ok: 142 71% 45%;
-    --badge-warning: 38 92% 50%;
-    --badge-danger: 0 72% 51%;
     --nav-height: 64px;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 224 76% 48%;
   }
 }
 
@@ -63,31 +77,35 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   }
 
   h1, h2, h3 {
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    @apply font-semibold tracking-tight;
   }
 }
 
+@keyframes wave {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(2%); }
+}
+
+@keyframes wave-slow {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-1.5%); }
+}
+
+@keyframes wave-slower {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(1%); }
+}
+
+.animate-wave { animation: wave 8s ease-in-out infinite; }
+.animate-wave-slow { animation: wave-slow 12s ease-in-out infinite; }
+.animate-wave-slower { animation: wave-slower 16s ease-in-out infinite; }
+
 @layer components {
-  .section-card {
-    @apply bg-card rounded-lg border shadow-sm overflow-hidden;
-  }
-
-  .section-header {
-    background: hsl(var(--section-header));
-    color: hsl(var(--section-header-fg));
-    @apply px-6 py-3 font-semibold text-sm uppercase tracking-wider;
-  }
-
-  .section-body {
-    @apply p-6 bg-card;
-  }
-
   .form-grid {
     @apply grid grid-cols-1 md:grid-cols-2 gap-4;
   }
@@ -96,26 +114,23 @@
     @apply grid grid-cols-1 md:grid-cols-3 gap-4;
   }
 
-  .repeatable-table {
-    @apply w-full border-collapse;
-  }
-
-  .repeatable-table th {
-    background: hsl(var(--table-header));
-    @apply text-left px-3 py-2 text-sm font-semibold text-foreground border-b;
-  }
-
-  .repeatable-table td {
-    @apply px-2 py-1 border-b border-border;
-  }
-
   .nav-bar {
-    height: var(--nav-height);
-    @apply fixed top-0 left-0 right-0 z-50 bg-card border-b shadow-sm flex items-center px-6 gap-4;
+    min-height: var(--nav-height);
+    @apply fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b flex flex-wrap items-center gap-2 px-4 py-2 sm:px-6 sm:py-0 shadow-sm;
   }
 
   .page-content {
-    padding-top: calc(var(--nav-height) + 1.5rem);
-    @apply px-4 md:px-8 pb-16 max-w-5xl mx-auto;
+    padding-top: 5.5rem;
+    @apply px-4 sm:px-6 md:px-8 lg:px-10 pb-20 max-w-6xl mx-auto;
+  }
+
+  @media (min-width: 640px) {
+    .nav-bar {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    .page-content {
+      padding-top: calc(var(--nav-height) + 2rem);
+    }
   }
 }

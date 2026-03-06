@@ -156,7 +156,7 @@ export default function KatastrMap({
     return (
       <div className="space-y-3">
         <div className="text-sm font-medium text-foreground">Katastrální mapa</div>
-        <div className="relative rounded-lg border overflow-hidden bg-white" style={{ height: 400 }}>
+        <div className="relative rounded-lg border overflow-hidden bg-white h-[280px] sm:h-[360px] md:h-[400px]">
           <img
             src={imageUrl}
             alt="Katastrální mapa objektu"
@@ -223,7 +223,7 @@ export default function KatastrMap({
         </Button>
       </div>
       {searchError && <p className="text-xs text-destructive">{searchError}</p>}
-      <div className="rounded-lg border overflow-hidden" style={{ height: 400 }}>
+      <div className="rounded-lg border overflow-hidden h-[280px] sm:h-[360px] md:h-[400px]">
         <MapContainer
           center={CZECH_CENTER}
           zoom={DEFAULT_ZOOM}

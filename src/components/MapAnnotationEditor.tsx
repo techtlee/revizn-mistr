@@ -41,7 +41,7 @@ export default function MapAnnotationEditor({
 
     const container = containerRef.current;
     const width = container.clientWidth;
-    const height = 400;
+    const height = container.clientHeight || 360;
 
     const fc = new FabricCanvas(canvasRef.current, {
       width,
@@ -235,7 +235,7 @@ export default function MapAnnotationEditor({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1 flex-wrap">
+      <div className="flex items-center gap-1 flex-wrap overflow-x-auto pb-1 -mx-1">
         {tools.map((t) => (
           <Button
             key={t.id}
@@ -300,8 +300,7 @@ export default function MapAnnotationEditor({
       </div>
       <div
         ref={containerRef}
-        className="relative rounded-lg border overflow-hidden bg-white"
-        style={{ height: 400 }}
+        className="relative rounded-lg border overflow-hidden bg-white h-[280px] sm:h-[360px] md:h-[400px]"
       >
         <img
           src={imageUrl}

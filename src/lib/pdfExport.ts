@@ -19,7 +19,9 @@ function sDate(val: string | null | undefined): string {
   if (!val) return "—";
   try {
     const d = new Date(val);
-    return `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    return `${day}.${month}.${d.getFullYear()}`;
   } catch {
     return "—";
   }
