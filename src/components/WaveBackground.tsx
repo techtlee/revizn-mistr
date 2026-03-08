@@ -9,7 +9,7 @@ export default function WaveBackground() {
           preserveAspectRatio="none"
         >
           <path
-            fill="hsl(221 83% 53% / 0.06)"
+            fill="hsl(221 100% 50% / 0.06)"
             d="M0,100 C300,50 600,150 900,100 C1050,75 1200,125 1200,100 L1200,200 L0,200 Z"
           />
         </svg>
@@ -20,7 +20,7 @@ export default function WaveBackground() {
           preserveAspectRatio="none"
         >
           <path
-            fill="hsl(221 83% 53% / 0.04)"
+            fill="hsl(44 84% 51% / 0.06)"
             d="M0,120 C400,80 800,160 1200,120 L1200,200 L0,200 Z"
           />
         </svg>
@@ -31,7 +31,7 @@ export default function WaveBackground() {
           preserveAspectRatio="none"
         >
           <path
-            fill="hsl(221 83% 53% / 0.08)"
+            fill="hsl(221 100% 50% / 0.08)"
             d="M0,80 C250,40 500,120 750,80 C900,55 1050,105 1200,80 L1200,200 L0,200 Z"
           />
         </svg>

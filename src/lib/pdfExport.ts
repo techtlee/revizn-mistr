@@ -93,10 +93,10 @@ function buildHTML(
     background: #fff;
     width: 794px;
   }
-  h1 { font-size: 15pt; font-weight: bold; color: #1a3a5c; text-align: center; margin-bottom: 3px; }
+  h1 { font-size: 15pt; font-weight: bold; color: #004ffe; text-align: center; margin-bottom: 3px; }
   .subtitle { text-align: center; color: #666; font-size: 8.5pt; margin-bottom: 22px; }
   .sec { margin-bottom: 14px; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
-  .st { background: #1a3a5c; color: #fff; padding: 5px 10px; font-weight: bold; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  .st { background: #004ffe; color: #fff; padding: 5px 10px; font-weight: bold; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
   .sb { padding: 8px 10px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 18px; }
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px 18px; }
@@ -116,8 +116,8 @@ function buildHTML(
   .tag { display: inline-block; background: #e8edf2; border: 1px solid #c5cfd8; border-radius: 3px; padding: 1px 6px; font-size: 8pt; margin: 1px 2px; }
 </style>
 <div class="page">
-  <h1>REVIZNÍ ZPRÁVA – SOUSTAVA HROMOSVODU LPS</h1>
-  <div class="subtitle">Lightning Protection System – Inspection Report</div>
+  <h1>REVIZNÍ ZPRÁVA – SOUSTAVA HROMOSVODU</h1>
+  <div class="subtitle">Hromosvody Vitmajer – Mladá Boleslav</div>
 
   <div class="sec">
     <div class="st">1. Identifikace revize</div>
