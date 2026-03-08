@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,7 @@ import RepeatableList from "@/components/RepeatableList";
 import RepeatableTable from "@/components/RepeatableTable";
 import MultiSelectCheckbox from "@/components/MultiSelectCheckbox";
 import SignatureField from "@/components/SignatureField";
+import KatastrMap from "@/components/KatastrMap";
 import { generatePDF } from "@/lib/pdfExport";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -26,14 +28,16 @@ const EMPTY_MEASUREMENT = { id: "", report_id: "", oznaceni_svodu: null, odpor_z
 
 function SectionCard({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
   return (
-    <div className="section-card">
-      <div className="section-header">
-        {number}. {title}
-      </div>
-      <div className="section-body">
+    <Card className="overflow-hidden">
+      <CardHeader className="bg-primary text-primary-foreground py-3.5">
+        <CardTitle className="text-sm font-semibold uppercase tracking-wider">
+          {number}. {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-6">
         {children}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -60,6 +64,7 @@ export default function ReportForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,7 +110,23 @@ export default function ReportForm() {
 
   const set = (key: keyof Report, val: unknown) => setForm(f => ({ ...f, [key]: val }));
 
+  const formatPhone = (value: string): string => {
+    const digits = value.replace(/[^\d]/g, "").slice(0, 12);
+    if (digits.length === 0) return "";
+    if (digits.length <= 3) return `+${digits}`;
+    return `+${digits.slice(0, 3)} ${digits.slice(3)}`;
+  };
+
+  const isValidPhone = (value: string | null | undefined): boolean => {
+    if (!value || value.trim() === "") return true;
+    return /^\+\d{3} \d{9}$/.test(value);
+  };
+
   const handleSave = async () => {
+    if (!isValidPhone(form.telefon_technika) || !isValidPhone(form.telefon_montazni_firmy)) {
+      toast({ title: "Chyba", description: "Telefonní číslo musí být ve formátu +XXX XXXXXXXXX.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       let reportId = id;
@@ -161,20 +182,27 @@ export default function ReportForm() {
   };
 
   const handleExportPDF = async () => {
-    if (isEdit && id) {
-      const { data: report } = await supabase.from("inspection_reports").select("*").eq("id", id).single();
-      if (report) {
-        const std = standards.map((norma, i) => ({ id: "", report_id: id, norma, sort_order: i }));
-        const inst = instruments.map((r, i) => ({ id: "", report_id: id, ...r, sort_order: i }));
-        const meas = measurements.map((r, i) => ({ id: "", report_id: id, ...r, sort_order: i }));
-        generatePDF(report, std, inst, meas);
+    setExporting(true);
+    try {
+      let reportData: Report;
+      if (isEdit && id) {
+        const { data } = await supabase.from("inspection_reports").select("*").eq("id", id).single();
+        if (!data) throw new Error("Report not found");
+        reportData = data;
+      } else {
+        reportData = { ...form, id: "", created_at: "", updated_at: "" } as Report;
       }
-    } else {
-      const fakeReport = { ...form, id: "", created_at: "", updated_at: "" } as Report;
-      const std = standards.map((norma, i) => ({ id: "", report_id: "", norma, sort_order: i }));
-      const inst = instruments.map((r, i) => ({ id: "", report_id: "", ...r, sort_order: i }));
-      const meas = measurements.map((r, i) => ({ id: "", report_id: "", ...r, sort_order: i }));
-      generatePDF(fakeReport, std, inst, meas);
+      const rid = id || "";
+      const std = standards.map((norma, i) => ({ id: "", report_id: rid, norma, sort_order: i }));
+      const inst = instruments.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i }));
+      const meas = measurements.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i }));
+      await generatePDF(reportData, std, inst, meas);
+      toast({ title: "PDF staženo", description: "Revizní zpráva byla exportována do PDF." });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Chyba", description: "Nepodařilo se vygenerovat PDF.", variant: "destructive" });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -203,23 +231,24 @@ export default function ReportForm() {
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="nav-bar">
-        <button onClick={() => navigate("/")} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/" className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0">
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Zpět</span>
-        </button>
-        <div className="flex items-center gap-2 ml-2">
+          <span className="text-sm hidden sm:inline">Zpět</span>
+        </Link>
+        <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
             <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-bold text-foreground">LPS Revize</span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportPDF}>
-            <Download className="w-4 h-4 mr-1" /> PDF
+          <span className="font-bold text-foreground text-sm sm:text-base">LPS Revize</span>
+        </Link>
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="px-2 sm:px-3">
+            {exporting ? <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" /> : <Download className="w-4 h-4 sm:mr-1" />}
+            <span className="hidden sm:inline">PDF</span>
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-            {isEdit ? "Uložit změny" : "Uložit zprávu"}
+          <Button size="sm" onClick={handleSave} disabled={saving} className="px-2 sm:px-3">
+            {saving ? <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" /> : <Save className="w-4 h-4 sm:mr-1" />}
+            <span className="hidden sm:inline">{isEdit ? "Uložit změny" : "Uložit zprávu"}</span>
           </Button>
         </div>
       </nav>
@@ -264,7 +293,10 @@ export default function ReportForm() {
               <Input value={form.evidencni_cislo || ""} onChange={e => set("evidencni_cislo", e.target.value)} />
             </FField>
             <FField label="Telefon revizního technika">
-              <Input value={form.telefon_technika || ""} onChange={e => set("telefon_technika", e.target.value)} placeholder="+420..." />
+              <Input type="tel" inputMode="numeric" value={form.telefon_technika || ""} onChange={e => set("telefon_technika", formatPhone(e.target.value))} placeholder="+420 123456789" maxLength={14} />
+              {form.telefon_technika && !isValidPhone(form.telefon_technika) && (
+                <p className="text-xs text-destructive mt-1">Formát: +XXX XXXXXXXXX (předvolba + 9 číslic)</p>
+              )}
             </FField>
             <FField label="Adresa revizního technika" full>
               <Input value={form.adresa_technika || ""} onChange={e => set("adresa_technika", e.target.value)} />
@@ -298,8 +330,20 @@ export default function ReportForm() {
               <Input value={form.montazni_firma || ""} onChange={e => set("montazni_firma", e.target.value)} />
             </FField>
             <FField label="Telefon montážní firmy">
-              <Input value={form.telefon_montazni_firmy || ""} onChange={e => set("telefon_montazni_firmy", e.target.value)} placeholder="+420..." />
+              <Input type="tel" inputMode="numeric" value={form.telefon_montazni_firmy || ""} onChange={e => set("telefon_montazni_firmy", formatPhone(e.target.value))} placeholder="+420 123456789" maxLength={14} />
+              {form.telefon_montazni_firmy && !isValidPhone(form.telefon_montazni_firmy) && (
+                <p className="text-xs text-destructive mt-1">Formát: +XXX XXXXXXXXX (předvolba + 9 číslic)</p>
+              )}
             </FField>
+          </div>
+          <div className="mt-4">
+            <KatastrMap
+              address={form.adresa_objektu}
+              imageUrl={form.katastr_map_url}
+              annotations={form.katastr_annotations}
+              onImageChange={(url) => set("katastr_map_url", url)}
+              onAnnotationsChange={(json) => set("katastr_annotations", json)}
+            />
           </div>
         </SectionCard>
 
@@ -580,14 +624,16 @@ export default function ReportForm() {
         </SectionCard>
 
         {/* Save button at bottom */}
-        <div className="flex justify-end gap-3 pt-4 pb-8">
-          <Button variant="outline" onClick={() => navigate("/")} disabled={saving}>
+        <div className="flex flex-wrap justify-end gap-2 sm:gap-3 pt-4 pb-8">
+          <Button variant="outline" onClick={() => navigate("/")} disabled={saving} className="flex-1 sm:flex-none">
             Zrušit
           </Button>
-          <Button variant="outline" onClick={handleExportPDF}>
-            <Download className="w-4 h-4 mr-1" /> Exportovat PDF
+          <Button variant="outline" onClick={handleExportPDF} disabled={exporting} className="flex-1 sm:flex-none">
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+            <span className="hidden sm:inline">Exportovat PDF</span>
+            <span className="sm:hidden">PDF</span>
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none min-w-[120px]">
             {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
             {isEdit ? "Uložit změny" : "Uložit zprávu"}
           </Button>
