@@ -9,13 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Zap, Plus, Search, FileText, Calendar, User, Building2, Pencil, Trash2, Download, BarChart3, PieChart, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { Zap, Plus, Search, FileText, Calendar, User, Building2, Pencil, Trash2, Download, BarChart3, PieChart, CheckCircle2, AlertTriangle, XCircle, LogIn, LogOut } from "lucide-react";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { cs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/lib/pdfExport";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Index() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,6 +24,8 @@ export default function Index() {
   const [filterDatumDo, setFilterDatumDo] = useState("");
   const [filterPosudek, setFilterPosudek] = useState<string>("all");
   const [filterDruh, setFilterDruh] = useState<string>("all");
+  const { user, signOut } = useAuth();
+  const isAdmin = !!user;
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -166,24 +169,40 @@ export default function Index() {
       <nav className="nav-bar">
         <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="w-5 h-5 text-primary-foreground" />
+            <Zap className="w-5 h-5 text-[hsl(44,84%,51%)]" />
           </div>
-          <span className="font-bold text-base sm:text-lg text-foreground">LPS Revize</span>
+          <div className="flex flex-col leading-none">
+            <span className="font-bold text-sm sm:text-base text-foreground tracking-wide uppercase">Vitmajer</span>
+            <span className="text-[10px] text-muted-foreground tracking-widest hidden sm:block">Hromosvody</span>
+          </div>
         </Link>
-        <div className="ml-auto shrink-0">
-          <Button onClick={() => navigate("/report/new")} size="sm" className="text-sm">
-            <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Nová revize</span>
-            <span className="sm:hidden">Nová</span>
-          </Button>
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          {isAdmin && (
+            <Button onClick={() => navigate("/report/new")} size="sm" className="text-sm">
+              <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Nová revize</span>
+              <span className="sm:hidden">Nová</span>
+            </Button>
+          )}
+          {isAdmin ? (
+            <Button variant="outline" size="sm" onClick={() => signOut()} className="text-sm">
+              <LogOut className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Odhlásit</span>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="text-sm">
+              <LogIn className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Přihlášení</span>
+            </Button>
+          )}
         </div>
       </nav>
 
       <div className="page-content">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revizní zprávy LPS</h1>
-          <p className="text-muted-foreground mt-1">Správa revizí soustav hromosvodu</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revizní zprávy</h1>
+          <p className="text-muted-foreground mt-1">Hromosvody Vitmajer – správa revizí</p>
         </div>
 
         {/* Stats */}
@@ -282,7 +301,7 @@ export default function Index() {
               <CardContent>
                 <ChartContainer
                   config={{
-                    count: { label: "Počet revizí", color: "hsl(213 75% 32%)" },
+                    count: { label: "Počet revizí", color: "hsl(221 100% 50%)" },
                   }}
                   className="h-[240px] w-full"
                 >
@@ -461,24 +480,28 @@ export default function Index() {
                           >
                             <Download className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => navigate(`/report/${report.id}/edit`)}
-                            title="Upravit"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDelete(report.id)}
-                            title="Smazat"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => navigate(`/report/${report.id}/edit`)}
+                              title="Upravit"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDelete(report.id)}
+                              title="Smazat"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

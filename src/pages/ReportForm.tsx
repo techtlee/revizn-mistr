@@ -16,6 +16,7 @@ import MultiSelectCheckbox from "@/components/MultiSelectCheckbox";
 import SignatureField from "@/components/SignatureField";
 import KatastrMap from "@/components/KatastrMap";
 import { generatePDF } from "@/lib/pdfExport";
+import { useAuth } from "@/hooks/useAuth";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Report = Tables<"inspection_reports">;
@@ -61,6 +62,7 @@ function FField({ label, children, full }: { label: string; children: React.Reac
 export default function ReportForm() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -83,6 +85,12 @@ export default function ReportForm() {
   const [standards, setStandards] = useState<string[]>([]);
   const [instruments, setInstruments] = useState<Omit<Instrument, "id" | "report_id">[]>([]);
   const [measurements, setMeasurements] = useState<Omit<Measurement, "id" | "report_id">[]>([]);
+
+  useEffect(() => {
+    if (isEdit && !authLoading && !user) {
+      navigate("/login");
+    }
+  }, [isEdit, authLoading, user, navigate]);
 
   // Load existing report
   useEffect(() => {
@@ -237,9 +245,12 @@ export default function ReportForm() {
         </Link>
         <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="w-4 h-4 text-primary-foreground" />
+            <Zap className="w-4 h-4 text-[hsl(44,84%,51%)]" />
           </div>
-          <span className="font-bold text-foreground text-sm sm:text-base">LPS Revize</span>
+          <div className="flex flex-col leading-none">
+            <span className="font-bold text-sm text-foreground tracking-wide uppercase">Vitmajer</span>
+            <span className="text-[9px] text-muted-foreground tracking-widest hidden sm:block">Hromosvody</span>
+          </div>
         </Link>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="px-2 sm:px-3">
@@ -258,7 +269,7 @@ export default function ReportForm() {
           <h1 className="text-2xl font-bold text-foreground">
             {isEdit ? "Upravit revizní zprávu" : "Nová revizní zpráva"}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">LPS – Soustava hromosvodu</p>
+          <p className="text-muted-foreground text-sm mt-1">Projekce, montáže a revize hromosvodů</p>
         </div>
 
         {/* Section 1 */}
