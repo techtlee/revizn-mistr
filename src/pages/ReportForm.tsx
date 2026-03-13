@@ -8,36 +8,66 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Download, Zap, Loader2 } from "lucide-react";
-import RepeatableList from "@/components/RepeatableList";
+import { ArrowLeft, ArrowRight, Save, Download, Zap, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import RepeatableTable from "@/components/RepeatableTable";
+import RepeatableList from "@/components/RepeatableList";
 import MultiSelectCheckbox from "@/components/MultiSelectCheckbox";
 import SignatureField from "@/components/SignatureField";
 import KatastrMap from "@/components/KatastrMap";
+import FormStepper, { type Step } from "@/components/FormStepper";
+import InspectionChecklist, { CHECKLIST_E11, CHECKLIST_E12 } from "@/components/InspectionChecklist";
 import { generatePDF } from "@/lib/pdfExport";
 import { useAuth } from "@/hooks/useAuth";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Report = Tables<"inspection_reports">;
-type Standard = Tables<"report_standards">;
 type Instrument = Tables<"report_instruments">;
 type Measurement = Tables<"report_measurements">;
+type SpdDevice = Tables<"report_spd_devices">;
 
-const EMPTY_INSTRUMENT = { id: "", report_id: "", nazev_pristroje: null, typ_pristroje: null, vyrobni_cislo: null, cislo_kalibrace: null, sort_order: 0 };
-const EMPTY_MEASUREMENT = { id: "", report_id: "", oznaceni_svodu: null, odpor_zemnice: null, sort_order: 0 };
+const STEPS: Step[] = [
+  { id: "hlavicka", title: "Hlavička a identifikace", shortTitle: "Hlavička" },
+  { id: "objekt", title: "Objekt a objednatel", shortTitle: "Objekt" },
+  { id: "udaje", title: "Údaje o objektu", shortTitle: "Údaje" },
+  { id: "spd", title: "SPD a přístroje", shortTitle: "SPD" },
+  { id: "predmet", title: "Předmět a rozsah", shortTitle: "Předmět" },
+  { id: "doklady", title: "Předložené doklady", shortTitle: "Doklady" },
+  { id: "popis", title: "Technický popis", shortTitle: "Popis" },
+  { id: "e11", title: "Prohlídka – vnější", shortTitle: "Vnější" },
+  { id: "e12", title: "Prohlídka – vnitřní", shortTitle: "Vnitřní" },
+  { id: "mereni", title: "Měření", shortTitle: "Měření" },
+  { id: "zaver", title: "Závěr a podpisy", shortTitle: "Závěr" },
+];
 
-function SectionCard({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
+const EMPTY_INSTRUMENT: Record<string, string | number | null> = {
+  nazev_pristroje: null, typ_pristroje: null, vyrobni_cislo: null,
+  cislo_kalibracniho_listu: null, datum_kalibrace: null, firma_kalibrace: null, sort_order: 0,
+};
+const EMPTY_MEASUREMENT: Record<string, string | number | null> = {
+  oznaceni_zkusebni_svorky: null, odpor_s_vodicem: null, odpor_bez_vodice: null, prechodovy_odpor: null, sort_order: 0,
+};
+const EMPTY_SPD: Record<string, string | number | null> = {
+  vyrobce: null, typove_oznaceni: null, misto_instalace: null, sort_order: 0,
+};
+
+const TYP_OBJEKTU_OPTIONS = [
+  "pro bytové účely",
+  "pro administrativní účely",
+  "průmyslový objekt",
+  "objekt s nebezpečím požáru",
+  "objekt s nebezpečím výbuchu",
+  "jiný typ objektu",
+];
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="bg-primary text-primary-foreground py-3.5">
-        <CardTitle className="text-sm font-semibold uppercase tracking-wider">
-          {number}. {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-semibold uppercase tracking-wider">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="pt-6">
-        {children}
-      </CardContent>
+      <CardContent className="pt-6">{children}</CardContent>
     </Card>
   );
 }
@@ -68,31 +98,36 @@ export default function ReportForm() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(isEdit);
+  const [currentStep, setCurrentStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form state
   const [form, setForm] = useState<Partial<Report>>({
-    druh_revize: "pravidelná",
+    typ_revize: "pravidelná",
     trida_lps: "III",
-    elektricka_zarizeni_na_strese: false,
-    projektova_dokumentace: false,
-    byly_zjisteny_zavady: false,
-    soucast_revize_neni: [],
-    oblasti_kontroly: [],
-    podklad_revize: [],
+    rozsah_vnejsi_ochrana: false,
+    rozsah_vnitrni_ochrana: false,
+    rozsah_vnejsi: false,
+    rozsah_vnitrni: false,
+    rozsah_staticka: false,
+    rozsah_uzemneni: false,
+    typ_jimaci_soustavy: [],
+    druh_zeminy: [],
+    stav_zeminy: [],
+    zony_ochrany_lpz: [],
+    potencialove_vyrovnani: [],
+    seznam_priloh: [],
+    inspection_checklist: {},
+    predlozene_doklady: {},
   });
 
-  const [standards, setStandards] = useState<string[]>([]);
-  const [instruments, setInstruments] = useState<Omit<Instrument, "id" | "report_id">[]>([]);
-  const [measurements, setMeasurements] = useState<Omit<Measurement, "id" | "report_id">[]>([]);
+  const [instruments, setInstruments] = useState<Record<string, string | number | null>[]>([]);
+  const [measurements, setMeasurements] = useState<Record<string, string | number | null>[]>([]);
+  const [spdDevices, setSpdDevices] = useState<Record<string, string | number | null>[]>([]);
 
   useEffect(() => {
-    if (isEdit && !authLoading && !user) {
-      navigate("/login");
-    }
+    if (isEdit && !authLoading && !user) navigate("/login");
   }, [isEdit, authLoading, user, navigate]);
 
-  // Load existing report
   useEffect(() => {
     if (!isEdit || !id) return;
     const load = async () => {
@@ -101,14 +136,14 @@ export default function ReportForm() {
         const { data: report } = await supabase.from("inspection_reports").select("*").eq("id", id).single();
         if (report) setForm(report);
 
-        const { data: std } = await supabase.from("report_standards").select("*").eq("report_id", id).order("sort_order");
-        if (std) setStandards(std.map(s => s.norma));
-
         const { data: inst } = await supabase.from("report_instruments").select("*").eq("report_id", id).order("sort_order");
-        if (inst) setInstruments(inst.map(({ id: _id, report_id: _rid, ...rest }) => rest));
+        if (inst) setInstruments(inst.map(({ id: _id, report_id: _rid, ...rest }) => rest as Record<string, string | number | null>));
 
         const { data: meas } = await supabase.from("report_measurements").select("*").eq("report_id", id).order("sort_order");
-        if (meas) setMeasurements(meas.map(({ id: _id, report_id: _rid, ...rest }) => rest));
+        if (meas) setMeasurements(meas.map(({ id: _id, report_id: _rid, ...rest }) => rest as Record<string, string | number | null>));
+
+        const { data: spd } = await supabase.from("report_spd_devices").select("*").eq("report_id", id).order("sort_order");
+        if (spd) setSpdDevices(spd.map(({ id: _id, report_id: _rid, ...rest }) => rest as Record<string, string | number | null>));
       } finally {
         setLoading(false);
       }
@@ -118,27 +153,19 @@ export default function ReportForm() {
 
   const set = (key: keyof Report, val: unknown) => setForm(f => ({ ...f, [key]: val }));
 
-  const formatPhone = (value: string): string => {
-    const digits = value.replace(/[^\d]/g, "").slice(0, 12);
-    if (digits.length === 0) return "";
-    if (digits.length <= 3) return `+${digits}`;
-    return `+${digits.slice(0, 3)} ${digits.slice(3)}`;
-  };
+  const setChecklist = (vals: Record<string, boolean>) => set("inspection_checklist", vals);
+  const checklist = (form.inspection_checklist || {}) as Record<string, boolean>;
 
-  const isValidPhone = (value: string | null | undefined): boolean => {
-    if (!value || value.trim() === "") return true;
-    return /^\+\d{3} \d{9}$/.test(value);
+  const setDoklady = (key: string, val: unknown) => {
+    const prev = (form.predlozene_doklady || {}) as Record<string, unknown>;
+    set("predlozene_doklady", { ...prev, [key]: val });
   };
+  const doklady = (form.predlozene_doklady || {}) as Record<string, unknown>;
 
   const handleSave = async () => {
-    if (!isValidPhone(form.telefon_technika) || !isValidPhone(form.telefon_montazni_firmy)) {
-      toast({ title: "Chyba", description: "Telefonní číslo musí být ve formátu +XXX XXXXXXXXX.", variant: "destructive" });
-      return;
-    }
     setSaving(true);
     try {
       let reportId = id;
-
       const payload = { ...form };
       delete (payload as Record<string, unknown>).id;
       delete (payload as Record<string, unknown>).created_at;
@@ -152,18 +179,8 @@ export default function ReportForm() {
         if (error) throw error;
         reportId = data.id;
       }
-
       if (!reportId) throw new Error("No report id");
 
-      // Upsert standards
-      await supabase.from("report_standards").delete().eq("report_id", reportId);
-      if (standards.length > 0) {
-        await supabase.from("report_standards").insert(
-          standards.filter(s => s.trim()).map((norma, i) => ({ report_id: reportId!, norma, sort_order: i }))
-        );
-      }
-
-      // Upsert instruments
       await supabase.from("report_instruments").delete().eq("report_id", reportId);
       if (instruments.length > 0) {
         await supabase.from("report_instruments").insert(
@@ -171,11 +188,17 @@ export default function ReportForm() {
         );
       }
 
-      // Upsert measurements
       await supabase.from("report_measurements").delete().eq("report_id", reportId);
       if (measurements.length > 0) {
         await supabase.from("report_measurements").insert(
-          measurements.map((meas, i) => ({ report_id: reportId!, ...meas, sort_order: i }))
+          measurements.map((m, i) => ({ report_id: reportId!, ...m, sort_order: i }))
+        );
+      }
+
+      await supabase.from("report_spd_devices").delete().eq("report_id", reportId);
+      if (spdDevices.length > 0) {
+        await supabase.from("report_spd_devices").insert(
+          spdDevices.map((s, i) => ({ report_id: reportId!, ...s, sort_order: i }))
         );
       }
 
@@ -192,19 +215,14 @@ export default function ReportForm() {
   const handleExportPDF = async () => {
     setExporting(true);
     try {
-      let reportData: Report;
-      if (isEdit && id) {
-        const { data } = await supabase.from("inspection_reports").select("*").eq("id", id).single();
-        if (!data) throw new Error("Report not found");
-        reportData = data;
-      } else {
-        reportData = { ...form, id: "", created_at: "", updated_at: "" } as Report;
-      }
+      const reportData = (isEdit && id)
+        ? (await supabase.from("inspection_reports").select("*").eq("id", id).single()).data!
+        : { ...form, id: "", created_at: "", updated_at: "" } as Report;
       const rid = id || "";
-      const std = standards.map((norma, i) => ({ id: "", report_id: rid, norma, sort_order: i }));
-      const inst = instruments.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i }));
-      const meas = measurements.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i }));
-      await generatePDF(reportData, std, inst, meas);
+      const inst = instruments.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i })) as Instrument[];
+      const meas = measurements.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i })) as Measurement[];
+      const spd = spdDevices.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i })) as SpdDevice[];
+      await generatePDF(reportData, inst, meas, spd);
       toast({ title: "PDF staženo", description: "Revizní zpráva byla exportována do PDF." });
     } catch (err) {
       console.error(err);
@@ -219,13 +237,13 @@ export default function ReportForm() {
     if (!file) return;
     const path = `razitko/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("report-assets").upload(path, file);
-    if (error) {
-      toast({ title: "Chyba", description: "Nepodařilo se nahrát razítko.", variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "Chyba", description: "Nepodařilo se nahrát razítko.", variant: "destructive" }); return; }
     const { data } = supabase.storage.from("report-assets").getPublicUrl(path);
     set("razitko_url", data.publicUrl);
   };
+
+  const goNext = () => setCurrentStep(s => Math.min(s + 1, STEPS.length - 1));
+  const goPrev = () => setCurrentStep(s => Math.max(s - 1, 0));
 
   if (loading) {
     return (
@@ -235,9 +253,521 @@ export default function ReportForm() {
     );
   }
 
+  const renderStep = () => {
+    switch (STEPS[currentStep].id) {
+      case "hlavicka": return renderHlavicka();
+      case "objekt": return renderObjekt();
+      case "udaje": return renderUdaje();
+      case "spd": return renderSpd();
+      case "predmet": return renderPredmet();
+      case "doklady": return renderDoklady();
+      case "popis": return renderPopis();
+      case "e11": return renderE11();
+      case "e12": return renderE12();
+      case "mereni": return renderMereni();
+      case "zaver": return renderZaver();
+      default: return null;
+    }
+  };
+
+  function renderHlavicka() {
+    return (
+      <SectionCard title="Hlavička a identifikace revize">
+        <div className="form-grid">
+          <FField label="Ev. č. zprávy">
+            <Input value={form.ev_cislo_zpravy || ""} onChange={e => set("ev_cislo_zpravy", e.target.value)} />
+          </FField>
+          <FField label="Typ revize">
+            <Select value={form.typ_revize || ""} onValueChange={v => set("typ_revize", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="výchozí">Výchozí</SelectItem>
+                <SelectItem value="pravidelná">Pravidelná</SelectItem>
+                <SelectItem value="mimořádná">Mimořádná</SelectItem>
+              </SelectContent>
+            </Select>
+          </FField>
+          <FField label="Výtisk č.">
+            <Input type="number" min={1} value={form.vytisk_cislo ?? ""} onChange={e => set("vytisk_cislo", e.target.value === "" ? null : Number(e.target.value))} />
+          </FField>
+          <FField label="Počet listů">
+            <Input type="number" min={1} value={form.pocet_listu ?? ""} onChange={e => set("pocet_listu", e.target.value === "" ? null : Number(e.target.value))} />
+          </FField>
+          <FField label="Počet příloh">
+            <Input type="number" min={0} value={form.pocet_priloh ?? ""} onChange={e => set("pocet_priloh", e.target.value === "" ? null : Number(e.target.value))} />
+          </FField>
+          <FField label="Datum zahájení revize">
+            <Input type="date" value={form.datum_zahajeni || ""} onChange={e => set("datum_zahajeni", e.target.value)} />
+          </FField>
+          <FField label="Datum ukončení revize">
+            <Input type="date" value={form.datum_ukonceni || ""} onChange={e => set("datum_ukonceni", e.target.value)} />
+          </FField>
+          <FField label="Datum vypracování revizní zprávy">
+            <Input type="date" value={form.datum_vypracovani || ""} onChange={e => set("datum_vypracovani", e.target.value)} />
+          </FField>
+          <FField label="Revizní technik">
+            <Input value={form.revizni_technik || ""} onChange={e => set("revizni_technik", e.target.value)} />
+          </FField>
+          <FField label="Adresa revizního technika" full>
+            <Input value={form.adresa_technika || ""} onChange={e => set("adresa_technika", e.target.value)} />
+          </FField>
+          <FField label="Ev. č. osvědčení pro provádění revizí">
+            <Input value={form.ev_cislo_osvedceni || ""} onChange={e => set("ev_cislo_osvedceni", e.target.value)} />
+          </FField>
+          <FField label="Ev. č. oprávnění pro provádění revizí">
+            <Input value={form.ev_cislo_opravneni || ""} onChange={e => set("ev_cislo_opravneni", e.target.value)} />
+          </FField>
+          <FField label="Revizi byli přítomni" full>
+            <Input value={form.revizi_pritomni || ""} onChange={e => set("revizi_pritomni", e.target.value)} />
+          </FField>
+        </div>
+      </SectionCard>
+    );
+  }
+
+  function renderObjekt() {
+    return (
+      <SectionCard title="Objekt a objednatel">
+        <div className="space-y-6">
+          <div className="form-grid">
+            <FField label="Název a adresa objektu" full>
+              <Input value={form.nazev_adresa_objektu || ""} onChange={e => set("nazev_adresa_objektu", e.target.value)} />
+            </FField>
+          </div>
+          <KatastrMap
+            address={form.nazev_adresa_objektu}
+            imageUrl={form.katastr_map_url}
+            annotations={form.katastr_annotations}
+            onImageChange={(url) => set("katastr_map_url", url)}
+            onAnnotationsChange={(json) => set("katastr_annotations", json)}
+          />
+          <div className="form-grid">
+            <FField label="Objednatel revize">
+              <Input value={form.objednatel_revize || ""} onChange={e => set("objednatel_revize", e.target.value)} />
+            </FField>
+            <FField label="Majitel objektu">
+              <Input value={form.majitel_objektu || ""} onChange={e => set("majitel_objektu", e.target.value)} />
+            </FField>
+            <FField label="Provozovatel objektu">
+              <Input value={form.provozovatel_objektu || ""} onChange={e => set("provozovatel_objektu", e.target.value)} />
+            </FField>
+            <FField label="Montážní firma – název">
+              <Input value={form.montazni_firma_nazev || ""} onChange={e => set("montazni_firma_nazev", e.target.value)} />
+            </FField>
+            <FField label="Montážní firma – IČ">
+              <Input value={form.montazni_firma_ico || ""} onChange={e => set("montazni_firma_ico", e.target.value)} />
+            </FField>
+            <FField label="Montážní firma – Ev. č. oprávnění">
+              <Input value={form.montazni_firma_ev_opravneni || ""} onChange={e => set("montazni_firma_ev_opravneni", e.target.value)} />
+            </FField>
+          </div>
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-foreground">Rozsah prohlídky</div>
+            <div className="flex items-center gap-3">
+              <Switch checked={form.rozsah_vnejsi_ochrana || false} onCheckedChange={v => set("rozsah_vnejsi_ochrana", v)} />
+              <Label className="text-sm">Vnější ochrana před bleskem</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={form.rozsah_vnitrni_ochrana || false} onCheckedChange={v => set("rozsah_vnitrni_ochrana", v)} />
+              <Label className="text-sm">Vnitřní ochrana před bleskem</Label>
+            </div>
+          </div>
+          <FField label="Povětrnostní podmínky" full>
+            <Input value={form.poveternostni_podminky || ""} onChange={e => set("poveternostni_podminky", e.target.value)} />
+          </FField>
+        </div>
+      </SectionCard>
+    );
+  }
+
+  function renderUdaje() {
+    return (
+      <SectionCard title="Základní údaje o objektu">
+        <div className="space-y-6">
+          <div className="form-grid">
+            <FField label="Typ objektu">
+              <Select value={form.typ_objektu || ""} onValueChange={v => set("typ_objektu", v)}>
+                <SelectTrigger><SelectValue placeholder="Vyberte..." /></SelectTrigger>
+                <SelectContent>
+                  {TYP_OBJEKTU_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FField>
+            {form.typ_objektu === "jiný typ objektu" && (
+              <FField label="Konkrétně uveďte">
+                <Input value={form.typ_objektu_jiny || ""} onChange={e => set("typ_objektu_jiny", e.target.value)} />
+              </FField>
+            )}
+            <FField label="El. a neelektrická zařízení na střeše" full>
+              <Input value={form.el_zarizeni_na_strese || ""} onChange={e => set("el_zarizeni_na_strese", e.target.value)} placeholder="STA, anténa, klimatizace, solární panely, apod." />
+            </FField>
+            <FField label="Třída LPS (hladina ochrany – LPL)">
+              <Select value={form.trida_lps || ""} onValueChange={v => set("trida_lps", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["I", "II", "III", "IV"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FField>
+          </div>
+
+          <MultiSelectCheckbox
+            label="Typ jímací soustavy"
+            options={["tyče", "závěsná lana", "vodiče mřížové soustavy"]}
+            selected={form.typ_jimaci_soustavy || []}
+            onChange={v => set("typ_jimaci_soustavy", v)}
+          />
+
+          <div className="form-grid">
+            <FField label="Velikost ok mřížové soustavy">
+              <Select value={form.velikost_ok_mrizove || ""} onValueChange={v => set("velikost_ok_mrizove", v)}>
+                <SelectTrigger><SelectValue placeholder="Vyberte..." /></SelectTrigger>
+                <SelectContent>
+                  {["5x5m", "10x10m", "15x15m", "20x20m", "jiné"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FField>
+            <FField label="Výška tyčového jímače (m)">
+              <Input value={form.vyska_tycoveho_jimace || ""} onChange={e => set("vyska_tycoveho_jimace", e.target.value)} />
+            </FField>
+            <FField label="Materiál střechy">
+              <Input value={form.material_strechy || ""} onChange={e => set("material_strechy", e.target.value)} />
+            </FField>
+            <FField label="Typ uspořádání zemnící soustavy">
+              <Select value={form.typ_zemnci_soustavy || ""} onValueChange={v => set("typ_zemnci_soustavy", v)}>
+                <SelectTrigger><SelectValue placeholder="Vyberte..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A">Uspořádání typu A</SelectItem>
+                  <SelectItem value="B">Uspořádání typu B</SelectItem>
+                </SelectContent>
+              </Select>
+            </FField>
+          </div>
+
+          <MultiSelectCheckbox
+            label="Druh zeminy"
+            options={["písčitá", "štěrk", "rašelina", "kamenitá", "beton", "jíl", "ornice"]}
+            selected={form.druh_zeminy || []}
+            onChange={v => set("druh_zeminy", v)}
+          />
+
+          <MultiSelectCheckbox
+            label="Stav zeminy"
+            options={["suchá", "vlhká", "zmrzlá"]}
+            selected={form.stav_zeminy || []}
+            onChange={v => set("stav_zeminy", v)}
+          />
+
+          <MultiSelectCheckbox
+            label="Zóny ochrany před bleskem (LPZ)"
+            options={["LPZ0", "LPZ0A", "LPZ0B", "LPZ1", "LPZ2"]}
+            selected={form.zony_ochrany_lpz || []}
+            onChange={v => set("zony_ochrany_lpz", v)}
+          />
+
+          <MultiSelectCheckbox
+            label="Potenciálové vyrovnání silnoproudých elektroinstalací"
+            options={["TT", "TN", "IT"]}
+            selected={form.potencialove_vyrovnani || []}
+            onChange={v => set("potencialove_vyrovnani", v)}
+          />
+        </div>
+      </SectionCard>
+    );
+  }
+
+  function renderSpd() {
+    return (
+      <div className="space-y-6">
+        <SectionCard title="Osazené typy SPD">
+          <RepeatableTable
+            columns={[
+              { key: "vyrobce", label: "Výrobce" },
+              { key: "typove_oznaceni", label: "Typové označení" },
+              { key: "misto_instalace", label: "Místo instalace" },
+            ]}
+            rows={spdDevices}
+            onChange={setSpdDevices}
+            emptyRow={EMPTY_SPD}
+          />
+        </SectionCard>
+        <SectionCard title="Soupis použitých měřicích přístrojů">
+          <RepeatableTable
+            columns={[
+              { key: "nazev_pristroje", label: "Typ a název přístroje" },
+              { key: "vyrobni_cislo", label: "Výrobní (evidenční) číslo" },
+              { key: "cislo_kalibracniho_listu", label: "Číslo kalibračního listu" },
+              { key: "datum_kalibrace", label: "Datum kalibrace" },
+              { key: "firma_kalibrace", label: "Firma provádějící kalibraci" },
+            ]}
+            rows={instruments}
+            onChange={setInstruments}
+            emptyRow={EMPTY_INSTRUMENT}
+          />
+        </SectionCard>
+      </div>
+    );
+  }
+
+  function renderPredmet() {
+    return (
+      <SectionCard title="A. Předmět revize / B. Rozsah revize">
+        <div className="space-y-6">
+          <FField label="A. Předmět revize – přesná specifikace" full>
+            <Textarea rows={4} value={form.predmet_revize || ""} onChange={e => set("predmet_revize", e.target.value)} />
+          </FField>
+          <FField label="Co předmětem revize nebylo / nemohlo být revidováno" full>
+            <Textarea rows={3} value={form.predmet_revize_nebylo || ""} onChange={e => set("predmet_revize_nebylo", e.target.value)} />
+          </FField>
+          <div className="text-sm font-medium text-foreground">B. Rozsah revize</div>
+          <div className="space-y-3">
+            {[
+              { key: "rozsah_vnejsi" as const, label: "Vnější ochrana před bleskem" },
+              { key: "rozsah_vnitrni" as const, label: "Vnitřní ochrana před bleskem" },
+              { key: "rozsah_staticka" as const, label: "Ochrana před statickou elektřinou" },
+              { key: "rozsah_uzemneni" as const, label: "Uzemnění" },
+            ].map(item => (
+              <div key={item.key} className="flex items-center gap-3">
+                <Checkbox
+                  id={item.key}
+                  checked={(form[item.key] as boolean) || false}
+                  onCheckedChange={v => set(item.key, !!v)}
+                />
+                <Label htmlFor={item.key} className="text-sm font-normal cursor-pointer">{item.label}</Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+    );
+  }
+
+  function renderDoklady() {
+    const dokItems = [
+      { key: "protokol_vnejsi_vlivy", label: "Protokol o určení vnějších vlivů dle ČSN 33 2000-51 ed.3" },
+      { key: "projektova_dokumentace", label: "Projektová dokumentace LPS (technická a výkresová)" },
+      { key: "dokumentace_rizika", label: "Dokumentace o určení rizika ČSN EN 62305-2 ed.2" },
+      { key: "certifikaty", label: "Certifikáty a prohlášení o shodě na použitá zařízení" },
+      { key: "pokyny_montaz", label: "Pokyny pro montáž, uvádění do provozu a údržba zařízení" },
+      { key: "pozadavky_obsluha", label: "Požadavky na obsluhu" },
+      { key: "dalsi_dokumentace", label: "Další dodavatelská dokumentace" },
+    ];
+
+    return (
+      <SectionCard title="C. Předložené doklady">
+        <div className="space-y-4">
+          {dokItems.map(item => (
+            <div key={item.key} className="space-y-2">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id={`dok_${item.key}`}
+                  checked={!!(doklady[item.key] as boolean)}
+                  onCheckedChange={v => setDoklady(item.key, !!v)}
+                />
+                <Label htmlFor={`dok_${item.key}`} className="text-sm font-normal cursor-pointer">{item.label}</Label>
+              </div>
+              {item.key === "protokol_vnejsi_vlivy" && doklady[item.key] && (
+                <div className="ml-7 form-grid">
+                  <FField label="Název">
+                    <Input value={(doklady.protokol_nazev as string) || ""} onChange={e => setDoklady("protokol_nazev", e.target.value)} />
+                  </FField>
+                  <FField label="Datum zpracování">
+                    <Input type="date" value={(doklady.protokol_datum as string) || ""} onChange={e => setDoklady("protokol_datum", e.target.value)} />
+                  </FField>
+                  <FField label="Zpracovatel">
+                    <Input value={(doklady.protokol_zpracovatel as string) || ""} onChange={e => setDoklady("protokol_zpracovatel", e.target.value)} />
+                  </FField>
+                  <FField label="Klasifikace prostorů" full>
+                    <Input value={(doklady.protokol_klasifikace as string) || ""} onChange={e => setDoklady("protokol_klasifikace", e.target.value)} />
+                  </FField>
+                </div>
+              )}
+              {item.key === "projektova_dokumentace" && doklady[item.key] && (
+                <div className="ml-7 form-grid">
+                  <FField label="Zpracovatel">
+                    <Input value={(doklady.projekt_zpracovatel as string) || ""} onChange={e => setDoklady("projekt_zpracovatel", e.target.value)} />
+                  </FField>
+                  <FField label="Datum zpracování">
+                    <Input type="date" value={(doklady.projekt_datum as string) || ""} onChange={e => setDoklady("projekt_datum", e.target.value)} />
+                  </FField>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+    );
+  }
+
+  function renderPopis() {
+    return (
+      <SectionCard title="D. Technický popis revidovaného zařízení">
+        <FField label="Technický popis" full>
+          <Textarea rows={8} value={form.technicky_popis || ""} onChange={e => set("technicky_popis", e.target.value)} />
+        </FField>
+      </SectionCard>
+    );
+  }
+
+  function renderE11() {
+    return (
+      <SectionCard title="E1.1. Prohlídka – Vnější ochrana před bleskem">
+        <InspectionChecklist
+          groups={CHECKLIST_E11}
+          values={checklist}
+          onChange={setChecklist}
+        />
+      </SectionCard>
+    );
+  }
+
+  function renderE12() {
+    return (
+      <SectionCard title="E1.2. Prohlídka – Vnitřní ochrana před bleskem">
+        <InspectionChecklist
+          groups={CHECKLIST_E12}
+          values={checklist}
+          onChange={setChecklist}
+        />
+      </SectionCard>
+    );
+  }
+
+  function renderMereni() {
+    return (
+      <SectionCard title="E2. Měření">
+        <div className="space-y-6">
+          <FField label="Metoda měření" full>
+            <Textarea rows={3} value={form.metoda_mereni || ""} onChange={e => set("metoda_mereni", e.target.value)} />
+          </FField>
+          <div>
+            <div className="text-sm font-medium text-foreground mb-3">Měření zemních odporů zemničů</div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Minimální hodnota zemního odporu jednoho zemniče je menší rovna 10Ω (ČSN EN 62305–3, čl. 5.4.1).
+              Přechodový odpor ≤ 0,2Ω (ČSN EN 62305–3, čl. 5.3.5).
+            </p>
+            <RepeatableTable
+              columns={[
+                { key: "oznaceni_zkusebni_svorky", label: "Označení zkušební svorky" },
+                { key: "odpor_s_vodicem", label: "Odpor s ochranným vodičem (Ω)", type: "number" },
+                { key: "odpor_bez_vodice", label: "Odpor bez ochranného vodiče (Ω)", type: "number" },
+                { key: "prechodovy_odpor", label: "Přechodový odpor (Ω)", type: "number" },
+              ]}
+              rows={measurements}
+              onChange={setMeasurements}
+              emptyRow={EMPTY_MEASUREMENT}
+            />
+          </div>
+        </div>
+      </SectionCard>
+    );
+  }
+
+  function renderZaver() {
+    return (
+      <div className="space-y-6">
+        <SectionCard title="F. Soupis zjištěných závad">
+          <FField label="Zjištěné závady (přesně specifikovat s odkazem na normu)" full>
+            <Textarea rows={5} value={form.zjistene_zavady || ""} onChange={e => set("zjistene_zavady", e.target.value)} />
+          </FField>
+        </SectionCard>
+
+        <SectionCard title="G. Závěr a vyhodnocení">
+          <div className="space-y-6">
+            <FField label="Závěr revize" full>
+              <Textarea rows={5} value={form.zaver_text || ""} onChange={e => set("zaver_text", e.target.value)} />
+            </FField>
+            <FField label="Stav od poslední revize">
+              <Select value={form.stav_od_posledni_revize || ""} onValueChange={v => set("stav_od_posledni_revize", v)}>
+                <SelectTrigger><SelectValue placeholder="Vyberte..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stejný">Zůstal stejný</SelectItem>
+                  <SelectItem value="zhoršil se">Zhoršil se</SelectItem>
+                </SelectContent>
+              </Select>
+            </FField>
+
+            <div className="form-grid">
+              <FField label="Termín revize – LPS chránící kritické systémy">
+                <Input value={form.termin_lps_kriticke || ""} onChange={e => set("termin_lps_kriticke", e.target.value)} placeholder="např. 2 roky" />
+              </FField>
+              <FField label="Termín revize – LPS chránící ostatní objekty">
+                <Input value={form.termin_lps_ostatni || ""} onChange={e => set("termin_lps_ostatni", e.target.value)} placeholder="např. 4 roky" />
+              </FField>
+              <FField label="Termín revize – LPS s nebezpečím výbuchu">
+                <Input value={form.termin_lps_vybuch || ""} onChange={e => set("termin_lps_vybuch", e.target.value)} placeholder="např. 1 rok" />
+              </FField>
+            </div>
+
+            <FField label="Celkový posudek" full>
+              <Select value={form.celkovy_posudek || ""} onValueChange={v => set("celkovy_posudek", v)}>
+                <SelectTrigger><SelectValue placeholder="Vyberte posudek..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="v souladu">V souladu s právními předpisy a normami – zařízení je způsobilé</SelectItem>
+                  <SelectItem value="není v souladu">Není v souladu s právními předpisy a normami</SelectItem>
+                </SelectContent>
+              </Select>
+            </FField>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Podpisy a rozdělovník">
+          <div className="space-y-6">
+            <div className="form-grid">
+              <FField label="Místo">
+                <Input value={form.misto_podpisu || ""} onChange={e => set("misto_podpisu", e.target.value)} placeholder="V ..." />
+              </FField>
+              <FField label="Revizní zprávu předal dne">
+                <Input type="date" value={form.datum_predani || ""} onChange={e => set("datum_predani", e.target.value)} />
+              </FField>
+            </div>
+            <div className="form-grid">
+              <SignatureField
+                label="Podpis objednavatele"
+                value={form.podpis_objednavatele}
+                onChange={v => set("podpis_objednavatele", v)}
+              />
+              <SignatureField
+                label="Podpis revizního technika"
+                value={form.podpis_technika}
+                onChange={v => set("podpis_technika", v)}
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Razítko</Label>
+              <div className="mt-1 flex items-center gap-4">
+                {form.razitko_url && (
+                  <img src={form.razitko_url} alt="Razítko" className="h-16 object-contain border rounded" />
+                )}
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  {form.razitko_url ? "Změnit razítko" : "Nahrát razítko"}
+                </Button>
+                {form.razitko_url && (
+                  <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => set("razitko_url", null)}>
+                    Odstranit
+                  </Button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleRazitkoUpload} />
+              </div>
+            </div>
+            <FField label="Rozdělovník" full>
+              <Textarea rows={3} value={form.rozdelovnik || ""} onChange={e => set("rozdelovnik", e.target.value)}
+                placeholder="Výtisk č. 1: Provozovatel&#10;Výtisk č. 2: Dodavatel zařízení&#10;Výtisk č. 3: Revizní technik" />
+            </FField>
+            <RepeatableList
+              label="Seznam příloh"
+              placeholder="např. Protokol o určení vnějších vlivů"
+              items={form.seznam_priloh || []}
+              onChange={v => set("seznam_priloh", v)}
+            />
+          </div>
+        </SectionCard>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Nav */}
       <nav className="nav-bar">
         <Link to="/" className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0">
           <ArrowLeft className="w-4 h-4" />
@@ -269,385 +799,34 @@ export default function ReportForm() {
           <h1 className="text-2xl font-bold text-foreground">
             {isEdit ? "Upravit revizní zprávu" : "Nová revizní zpráva"}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Projekce, montáže a revize hromosvodů</p>
+          <p className="text-muted-foreground text-sm mt-1">Zpráva o revizi LPS dle ČSN EN 62305</p>
         </div>
 
-        {/* Section 1 */}
-        <SectionCard number={1} title="Identifikace revize">
-          <div className="form-grid">
-            <FField label="Číslo revize">
-              <Input value={form.cislo_revize || ""} onChange={e => set("cislo_revize", e.target.value)} placeholder="např. 2025/001" />
-            </FField>
-            <FField label="Druh revize">
-              <Select value={form.druh_revize || ""} onValueChange={v => set("druh_revize", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="výchozí">Výchozí</SelectItem>
-                  <SelectItem value="pravidelná">Pravidelná</SelectItem>
-                  <SelectItem value="mimořádná">Mimořádná</SelectItem>
-                </SelectContent>
-              </Select>
-            </FField>
-            <FField label="Datum provedení revize">
-              <Input type="date" value={form.datum_provedeni || ""} onChange={e => set("datum_provedeni", e.target.value)} />
-            </FField>
-            <FField label="Datum ukončení revize">
-              <Input type="date" value={form.datum_ukonceni || ""} onChange={e => set("datum_ukonceni", e.target.value)} />
-            </FField>
-            <FField label="Datum vystavení revizní zprávy">
-              <Input type="date" value={form.datum_vystaveni || ""} onChange={e => set("datum_vystaveni", e.target.value)} />
-            </FField>
-            <FField label="Revizní technik">
-              <Input value={form.revizni_technik || ""} onChange={e => set("revizni_technik", e.target.value)} />
-            </FField>
-            <FField label="Evidenční číslo revizního technika">
-              <Input value={form.evidencni_cislo || ""} onChange={e => set("evidencni_cislo", e.target.value)} />
-            </FField>
-            <FField label="Telefon revizního technika">
-              <Input type="tel" inputMode="numeric" value={form.telefon_technika || ""} onChange={e => set("telefon_technika", formatPhone(e.target.value))} placeholder="+420 123456789" maxLength={14} />
-              {form.telefon_technika && !isValidPhone(form.telefon_technika) && (
-                <p className="text-xs text-destructive mt-1">Formát: +XXX XXXXXXXXX (předvolba + 9 číslic)</p>
-              )}
-            </FField>
-            <FField label="Adresa revizního technika" full>
-              <Input value={form.adresa_technika || ""} onChange={e => set("adresa_technika", e.target.value)} />
-            </FField>
-          </div>
-        </SectionCard>
+        <FormStepper steps={STEPS} currentStep={currentStep} onStepClick={setCurrentStep} />
 
-        {/* Section 2 */}
-        <SectionCard number={2} title="Normy">
-          <RepeatableList
-            label="Použité normy"
-            placeholder="např. ČSN EN 62305-3"
-            items={standards}
-            onChange={setStandards}
-          />
-        </SectionCard>
+        {renderStep()}
 
-        {/* Section 3 */}
-        <SectionCard number={3} title="Identifikace objektu">
-          <div className="form-grid">
-            <FField label="Objednavatel">
-              <Input value={form.objednavatel || ""} onChange={e => set("objednavatel", e.target.value)} />
-            </FField>
-            <FField label="Název objektu">
-              <Input value={form.nazev_objektu || ""} onChange={e => set("nazev_objektu", e.target.value)} />
-            </FField>
-            <FField label="Adresa objektu" full>
-              <Input value={form.adresa_objektu || ""} onChange={e => set("adresa_objektu", e.target.value)} />
-            </FField>
-            <FField label="Montážní firma / zřizovatel hromosvodu">
-              <Input value={form.montazni_firma || ""} onChange={e => set("montazni_firma", e.target.value)} />
-            </FField>
-            <FField label="Telefon montážní firmy">
-              <Input type="tel" inputMode="numeric" value={form.telefon_montazni_firmy || ""} onChange={e => set("telefon_montazni_firmy", formatPhone(e.target.value))} placeholder="+420 123456789" maxLength={14} />
-              {form.telefon_montazni_firmy && !isValidPhone(form.telefon_montazni_firmy) && (
-                <p className="text-xs text-destructive mt-1">Formát: +XXX XXXXXXXXX (předvolba + 9 číslic)</p>
-              )}
-            </FField>
-          </div>
-          <div className="mt-4">
-            <KatastrMap
-              address={form.adresa_objektu}
-              imageUrl={form.katastr_map_url}
-              annotations={form.katastr_annotations}
-              onImageChange={(url) => set("katastr_map_url", url)}
-              onAnnotationsChange={(json) => set("katastr_annotations", json)}
-            />
-          </div>
-        </SectionCard>
-
-        {/* Section 4 */}
-        <SectionCard number={4} title="Rozsah revize">
-          <div className="space-y-4">
-            <FField label="Rozsah revize" full>
-              <Textarea rows={3} value={form.rozsah_revize || ""} onChange={e => set("rozsah_revize", e.target.value)} />
-            </FField>
-            <MultiSelectCheckbox
-              label="Součástí revize není"
-              options={["Vnější ochrana před bleskem", "Elektrická instalace uvnitř objektu", "Uzemnění"]}
-              selected={form.soucast_revize_neni || []}
-              onChange={v => set("soucast_revize_neni", v)}
-            />
-          </div>
-        </SectionCard>
-
-        {/* Section 5 */}
-        <SectionCard number={5} title="Základní údaje o objektu">
-          <div className="form-grid">
-            <FField label="Budova">
-              <Input value={form.budova || ""} onChange={e => set("budova", e.target.value)} />
-            </FField>
-            <FField label="Typ střechy">
-              <Input value={form.typ_strechy || ""} onChange={e => set("typ_strechy", e.target.value)} />
-            </FField>
-            <FField label="Krytina střechy">
-              <Input value={form.krytina_strechy || ""} onChange={e => set("krytina_strechy", e.target.value)} />
-            </FField>
-            <FField label="Třída LPS">
-              <Select value={form.trida_lps || ""} onValueChange={v => set("trida_lps", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="I">I</SelectItem>
-                  <SelectItem value="II">II</SelectItem>
-                  <SelectItem value="III">III</SelectItem>
-                  <SelectItem value="IV">IV</SelectItem>
-                </SelectContent>
-              </Select>
-            </FField>
-            <FField label="Typ jímací soustavy">
-              <Input value={form.typ_jimaci_soustavy || ""} onChange={e => set("typ_jimaci_soustavy", e.target.value)} />
-            </FField>
-            <FField label="Počet tyčových jímačů">
-              <Input type="number" min={0} value={form.pocet_tycovych_jimacu ?? ""} onChange={e => set("pocet_tycovych_jimacu", e.target.value === "" ? null : Number(e.target.value))} />
-            </FField>
-            <FField label="Počet pomocných jímačů">
-              <Input type="number" min={0} value={form.pocet_pomocnych_jimacu ?? ""} onChange={e => set("pocet_pomocnych_jimacu", e.target.value === "" ? null : Number(e.target.value))} />
-            </FField>
-            <FField label="Počet svodů">
-              <Input type="number" min={0} value={form.pocet_svodu ?? ""} onChange={e => set("pocet_svodu", e.target.value === "" ? null : Number(e.target.value))} />
-            </FField>
-            <FField label="Druh zeminy">
-              <Input value={form.druh_zeminy || ""} onChange={e => set("druh_zeminy", e.target.value)} />
-            </FField>
-            <FField label="Povětrnostní podmínky">
-              <Input value={form.poveternostni_podminky || ""} onChange={e => set("poveternostni_podminky", e.target.value)} />
-            </FField>
-            <FField label="Počasí během revize">
-              <Input value={form.pocasi_behem_revize || ""} onChange={e => set("pocasi_behem_revize", e.target.value)} />
-            </FField>
-            <FField label="Zóna ochrany před bleskem LPZ">
-              <Input value={form.zona_ochrany_lpz || ""} onChange={e => set("zona_ochrany_lpz", e.target.value)} />
-            </FField>
-            <div className="col-span-full space-y-3">
-              <div className="flex items-center gap-3">
-                <Switch
-                  checked={form.elektricka_zarizeni_na_strese || false}
-                  onCheckedChange={v => set("elektricka_zarizeni_na_strese", v)}
-                />
-                <Label className="text-sm">Elektrická zařízení na střeše</Label>
-              </div>
-              {form.elektricka_zarizeni_na_strese && (
-                <Input
-                  placeholder="Popis elektrických zařízení na střeše..."
-                  value={form.elektricka_zarizeni_popis || ""}
-                  onChange={e => set("elektricka_zarizeni_popis", e.target.value)}
-                />
-              )}
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* Section 6 */}
-        <SectionCard number={6} title="Údaje o dokumentu">
-          <div className="form-grid">
-            <FField label="Počet stran zprávy">
-              <Input type="number" min={1} value={form.pocet_stran ?? ""} onChange={e => set("pocet_stran", e.target.value === "" ? null : Number(e.target.value))} />
-            </FField>
-            <FField label="Počet vyhotovených zpráv">
-              <Input type="number" min={1} value={form.pocet_vyhotoveni ?? ""} onChange={e => set("pocet_vyhotoveni", e.target.value === "" ? null : Number(e.target.value))} />
-            </FField>
-            <FField label="Rozdělovník" full>
-              <Input value={form.rozdelovnik || ""} onChange={e => set("rozdelovnik", e.target.value)} />
-            </FField>
-          </div>
-        </SectionCard>
-
-        {/* Section 7 */}
-        <SectionCard number={7} title="Použité měřicí přístroje">
-          <RepeatableTable
-            columns={[
-              { key: "nazev_pristroje", label: "Název přístroje" },
-              { key: "typ_pristroje", label: "Typ přístroje" },
-              { key: "vyrobni_cislo", label: "Výrobní číslo" },
-              { key: "cislo_kalibrace", label: "Číslo kalibrace" },
-            ]}
-            rows={instruments as Record<string, string | number | null>[]}
-            onChange={(rows) => setInstruments(rows as Omit<Instrument, "id" | "report_id">[])}
-            emptyRow={EMPTY_INSTRUMENT as unknown as Record<string, string | number | null>}
-          />
-        </SectionCard>
-
-        {/* Section 8 */}
-        <SectionCard number={8} title="Předmět revize">
-          <div className="space-y-4">
-            <FField label="Předmět revize" full>
-              <Textarea rows={4} value={form.predmet_revize || ""} onChange={e => set("predmet_revize", e.target.value)} />
-            </FField>
-            <MultiSelectCheckbox
-              label="Oblasti kontroly"
-              options={["LPZ0a – vnější ochrana", "LPZ0b – vnější ochrana", "Uzemnění"]}
-              selected={form.oblasti_kontroly || []}
-              onChange={v => set("oblasti_kontroly", v)}
-            />
-          </div>
-        </SectionCard>
-
-        {/* Section 9 */}
-        <SectionCard number={9} title="Podklady pro revizi">
-          <div className="space-y-4">
-            <MultiSelectCheckbox
-              label="Podklad revize"
-              options={["Měření", "Prohlídka"]}
-              selected={form.podklad_revize || []}
-              onChange={v => set("podklad_revize", v)}
-            />
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={form.projektova_dokumentace || false}
-                onCheckedChange={v => set("projektova_dokumentace", v)}
-              />
-              <Label className="text-sm">Projektová dokumentace předložena</Label>
-            </div>
-            <FField label="Poznámka" full>
-              <Textarea rows={3} value={form.poznamka || ""} onChange={e => set("poznamka", e.target.value)} />
-            </FField>
-          </div>
-        </SectionCard>
-
-        {/* Section 10 */}
-        <SectionCard number={10} title="Technický popis zařízení">
-          <div className="space-y-4">
-            <FField label="Technický popis zařízení" full>
-              <Textarea rows={4} value={form.technicky_popis || ""} onChange={e => set("technicky_popis", e.target.value)} />
-            </FField>
-            <div className="form-grid">
-              <FField label="Vzdálenost mezi svody">
-                <Input value={form.vzdalenost_svodu || ""} onChange={e => set("vzdalenost_svodu", e.target.value)} placeholder="např. 10 m" />
-              </FField>
-              <FField label="Typ uzemňovací soustavy">
-                <Input value={form.typ_uzemnovaci_soustavy || ""} onChange={e => set("typ_uzemnovaci_soustavy", e.target.value)} />
-              </FField>
-              <FField label="Ekvipotenciální pospojení" full>
-                <Input value={form.ekvipotencialni_pospojeni || ""} onChange={e => set("ekvipotencialni_pospojeni", e.target.value)} />
-              </FField>
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* Section 11 */}
-        <SectionCard number={11} title="Měření zemních odporů">
-          <div className="space-y-4">
-            <RepeatableTable
-              columns={[
-                { key: "oznaceni_svodu", label: "Označení svodu" },
-                { key: "odpor_zemnice", label: "Odpor zemniče (Ω)", type: "number" },
-              ]}
-              rows={measurements as Record<string, string | number | null>[]}
-              onChange={(rows) => setMeasurements(rows as Omit<Measurement, "id" | "report_id">[])}
-              emptyRow={EMPTY_MEASUREMENT as unknown as Record<string, string | number | null>}
-            />
-            <FField label="Přechodový odpor spojů">
-              <Input value={form.prechodovy_odpor || ""} onChange={e => set("prechodovy_odpor", e.target.value)} placeholder="např. < 0,2 Ω" />
-            </FField>
-          </div>
-        </SectionCard>
-
-        {/* Section 12 */}
-        <SectionCard number={12} title="Zjištěné závady">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={form.byly_zjisteny_zavady || false}
-                onCheckedChange={v => set("byly_zjisteny_zavady", v)}
-              />
-              <Label className="text-sm font-medium">Byly zjištěny závady</Label>
-            </div>
-            {form.byly_zjisteny_zavady && (
-              <FField label="Popis závad" full>
-                <Textarea rows={4} value={form.popis_zavad || ""} onChange={e => set("popis_zavad", e.target.value)} />
-              </FField>
-            )}
-          </div>
-        </SectionCard>
-
-        {/* Section 13 */}
-        <SectionCard number={13} title="Závěr revize">
-          <div className="space-y-4">
-            <FField label="Závěr revize" full>
-              <Textarea rows={4} value={form.zaver_revize || ""} onChange={e => set("zaver_revize", e.target.value)} />
-            </FField>
-            <FField label="Celkový posudek" full>
-              <Select value={form.celkovy_posudek || ""} onValueChange={v => set("celkovy_posudek", v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Vyberte posudek..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Soustava hromosvodu je schopná bezpečného provozu">
-                    ✅ Soustava hromosvodu je schopná bezpečného provozu
-                  </SelectItem>
-                  <SelectItem value="Soustava vyžaduje opravu">
-                    ⚠️ Soustava vyžaduje opravu
-                  </SelectItem>
-                  <SelectItem value="Soustava není bezpečná">
-                    ❌ Soustava není bezpečná
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </FField>
-          </div>
-        </SectionCard>
-
-        {/* Section 14 */}
-        <SectionCard number={14} title="Podpisy">
-          <div className="form-grid">
-            <SignatureField
-              label="Podpis objednavatele"
-              value={form.podpis_objednavatele}
-              onChange={v => set("podpis_objednavatele", v)}
-            />
-            <SignatureField
-              label="Podpis revizního technika"
-              value={form.podpis_technika}
-              onChange={v => set("podpis_technika", v)}
-            />
-            <div className="col-span-full">
-              <Label className="text-sm font-medium">Razítko</Label>
-              <div className="mt-1 flex items-center gap-4">
-                {form.razitko_url && (
-                  <img src={form.razitko_url} alt="Razítko" className="h-16 object-contain border rounded" />
-                )}
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                  {form.razitko_url ? "Změnit razítko" : "Nahrát razítko"}
-                </Button>
-                {form.razitko_url && (
-                  <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => set("razitko_url", null)}>
-                    Odstranit
-                  </Button>
-                )}
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleRazitkoUpload} />
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* Section 15 */}
-        <SectionCard number={15} title="Termín další revize">
-          <div className="form-grid">
-            <FField label="Termín další revize">
-              <Input type="date" value={form.termin_dalsi_revize || ""} onChange={e => set("termin_dalsi_revize", e.target.value)} />
-            </FField>
-            <FField label="Termín vizuální kontroly">
-              <Input type="date" value={form.termin_vizualni_kontroly || ""} onChange={e => set("termin_vizualni_kontroly", e.target.value)} />
-            </FField>
-          </div>
-        </SectionCard>
-
-        {/* Save button at bottom */}
-        <div className="flex flex-wrap justify-end gap-2 sm:gap-3 pt-4 pb-8">
-          <Button variant="outline" onClick={() => navigate("/")} disabled={saving} className="flex-1 sm:flex-none">
-            Zrušit
+        <div className="flex items-center justify-between pt-4 pb-8">
+          <Button
+            variant="outline"
+            onClick={goPrev}
+            disabled={currentStep === 0}
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" /> Předchozí
           </Button>
-          <Button variant="outline" onClick={handleExportPDF} disabled={exporting} className="flex-1 sm:flex-none">
-            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-            <span className="hidden sm:inline">Exportovat PDF</span>
-            <span className="sm:hidden">PDF</span>
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none min-w-[120px]">
-            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-            {isEdit ? "Uložit změny" : "Uložit zprávu"}
-          </Button>
+          <span className="text-sm text-muted-foreground">
+            {currentStep + 1} / {STEPS.length}
+          </span>
+          {currentStep < STEPS.length - 1 ? (
+            <Button onClick={goNext}>
+              Další <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          ) : (
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              {isEdit ? "Uložit změny" : "Uložit zprávu"}
+            </Button>
+          )}
         </div>
       </div>
     </div>

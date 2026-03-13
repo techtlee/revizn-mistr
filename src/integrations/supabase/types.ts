@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -16,211 +14,276 @@ export type Database = {
     Tables: {
       inspection_reports: {
         Row: {
-          adresa_objektu: string | null
-          adresa_technika: string | null
-          budova: string | null
-          byly_zjisteny_zavady: boolean | null
-          celkovy_posudek: string | null
-          cislo_revize: string | null
-          created_at: string
-          datum_provedeni: string | null
-          datum_ukonceni: string | null
-          datum_vystaveni: string | null
-          druh_revize: string | null
-          druh_zeminy: string | null
-          ekvipotencialni_pospojeni: string | null
-          elektricka_zarizeni_na_strese: boolean | null
-          elektricka_zarizeni_popis: string | null
-          evidencni_cislo: string | null
           id: string
-          katastr_annotations: string | null
+          ev_cislo_zpravy: string | null
+          vytisk_cislo: number | null
+          pocet_listu: number | null
+          pocet_priloh: number | null
+          typ_revize: string | null
+          datum_zahajeni: string | null
+          datum_ukonceni: string | null
+          datum_vypracovani: string | null
+          revizni_technik: string | null
+          adresa_technika: string | null
+          ev_cislo_osvedceni: string | null
+          ev_cislo_opravneni: string | null
+          revizi_pritomni: string | null
+          nazev_adresa_objektu: string | null
+          objednatel_revize: string | null
+          majitel_objektu: string | null
+          provozovatel_objektu: string | null
+          montazni_firma_nazev: string | null
+          montazni_firma_ico: string | null
+          montazni_firma_ev_opravneni: string | null
           katastr_map_url: string | null
-          krytina_strechy: string | null
-          montazni_firma: string | null
-          nazev_objektu: string | null
-          objednavatel: string | null
-          oblasti_kontroly: string[] | null
-          pocasi_behem_revize: string | null
-          pocet_pomocnych_jimacu: number | null
-          pocet_stran: number | null
-          pocet_svodu: number | null
-          pocet_tycovych_jimacu: number | null
-          pocet_vyhotoveni: number | null
-          podklad_revize: string[] | null
+          katastr_annotations: string | null
+          rozsah_vnejsi_ochrana: boolean | null
+          rozsah_vnitrni_ochrana: boolean | null
+          poveternostni_podminky: string | null
+          typ_objektu: string | null
+          typ_objektu_jiny: string | null
+          el_zarizeni_na_strese: string | null
+          trida_lps: string | null
+          typ_jimaci_soustavy: string[] | null
+          velikost_ok_mrizove: string | null
+          vyska_tycoveho_jimace: string | null
+          material_strechy: string | null
+          typ_zemnci_soustavy: string | null
+          druh_zeminy: string[] | null
+          stav_zeminy: string[] | null
+          zony_ochrany_lpz: string[] | null
+          potencialove_vyrovnani: string[] | null
+          predmet_revize: string | null
+          predmet_revize_nebylo: string | null
+          rozsah_vnejsi: boolean | null
+          rozsah_vnitrni: boolean | null
+          rozsah_staticka: boolean | null
+          rozsah_uzemneni: boolean | null
+          predlozene_doklady: Json | null
+          technicky_popis: string | null
+          inspection_checklist: Json | null
+          metoda_mereni: string | null
+          zjistene_zavady: string | null
+          zaver_text: string | null
+          stav_od_posledni_revize: string | null
+          celkovy_posudek: string | null
+          termin_lps_kriticke: string | null
+          termin_lps_ostatni: string | null
+          termin_lps_vybuch: string | null
+          misto_podpisu: string | null
+          datum_predani: string | null
           podpis_objednavatele: string | null
           podpis_technika: string | null
-          popis_zavad: string | null
-          poveternostni_podminky: string | null
-          poznamka: string | null
-          prechodovy_odpor: string | null
-          predmet_revize: string | null
-          projektova_dokumentace: boolean | null
           razitko_url: string | null
-          revizni_technik: string | null
           rozdelovnik: string | null
-          rozsah_revize: string | null
-          soucast_revize_neni: string[] | null
-          technicky_popis: string | null
-          telefon_montazni_firmy: string | null
-          telefon_technika: string | null
-          termin_dalsi_revize: string | null
-          termin_vizualni_kontroly: string | null
-          trida_lps: string | null
-          typ_jimaci_soustavy: string | null
-          typ_strechy: string | null
-          typ_uzemnovaci_soustavy: string | null
+          seznam_priloh: string[] | null
+          created_at: string
           updated_at: string
-          vzdalenost_svodu: string | null
-          zaver_revize: string | null
-          zona_ochrany_lpz: string | null
         }
         Insert: {
-          adresa_objektu?: string | null
-          adresa_technika?: string | null
-          budova?: string | null
-          byly_zjisteny_zavady?: boolean | null
-          celkovy_posudek?: string | null
-          cislo_revize?: string | null
-          created_at?: string
-          datum_provedeni?: string | null
-          datum_ukonceni?: string | null
-          datum_vystaveni?: string | null
-          druh_revize?: string | null
-          druh_zeminy?: string | null
-          ekvipotencialni_pospojeni?: string | null
-          elektricka_zarizeni_na_strese?: boolean | null
-          elektricka_zarizeni_popis?: string | null
-          evidencni_cislo?: string | null
           id?: string
-          katastr_annotations?: string | null
+          ev_cislo_zpravy?: string | null
+          vytisk_cislo?: number | null
+          pocet_listu?: number | null
+          pocet_priloh?: number | null
+          typ_revize?: string | null
+          datum_zahajeni?: string | null
+          datum_ukonceni?: string | null
+          datum_vypracovani?: string | null
+          revizni_technik?: string | null
+          adresa_technika?: string | null
+          ev_cislo_osvedceni?: string | null
+          ev_cislo_opravneni?: string | null
+          revizi_pritomni?: string | null
+          nazev_adresa_objektu?: string | null
+          objednatel_revize?: string | null
+          majitel_objektu?: string | null
+          provozovatel_objektu?: string | null
+          montazni_firma_nazev?: string | null
+          montazni_firma_ico?: string | null
+          montazni_firma_ev_opravneni?: string | null
           katastr_map_url?: string | null
-          krytina_strechy?: string | null
-          montazni_firma?: string | null
-          nazev_objektu?: string | null
-          objednavatel?: string | null
-          oblasti_kontroly?: string[] | null
-          pocasi_behem_revize?: string | null
-          pocet_pomocnych_jimacu?: number | null
-          pocet_stran?: number | null
-          pocet_svodu?: number | null
-          pocet_tycovych_jimacu?: number | null
-          pocet_vyhotoveni?: number | null
-          podklad_revize?: string[] | null
+          katastr_annotations?: string | null
+          rozsah_vnejsi_ochrana?: boolean | null
+          rozsah_vnitrni_ochrana?: boolean | null
+          poveternostni_podminky?: string | null
+          typ_objektu?: string | null
+          typ_objektu_jiny?: string | null
+          el_zarizeni_na_strese?: string | null
+          trida_lps?: string | null
+          typ_jimaci_soustavy?: string[] | null
+          velikost_ok_mrizove?: string | null
+          vyska_tycoveho_jimace?: string | null
+          material_strechy?: string | null
+          typ_zemnci_soustavy?: string | null
+          druh_zeminy?: string[] | null
+          stav_zeminy?: string[] | null
+          zony_ochrany_lpz?: string[] | null
+          potencialove_vyrovnani?: string[] | null
+          predmet_revize?: string | null
+          predmet_revize_nebylo?: string | null
+          rozsah_vnejsi?: boolean | null
+          rozsah_vnitrni?: boolean | null
+          rozsah_staticka?: boolean | null
+          rozsah_uzemneni?: boolean | null
+          predlozene_doklady?: Json | null
+          technicky_popis?: string | null
+          inspection_checklist?: Json | null
+          metoda_mereni?: string | null
+          zjistene_zavady?: string | null
+          zaver_text?: string | null
+          stav_od_posledni_revize?: string | null
+          celkovy_posudek?: string | null
+          termin_lps_kriticke?: string | null
+          termin_lps_ostatni?: string | null
+          termin_lps_vybuch?: string | null
+          misto_podpisu?: string | null
+          datum_predani?: string | null
           podpis_objednavatele?: string | null
           podpis_technika?: string | null
-          popis_zavad?: string | null
-          poveternostni_podminky?: string | null
-          poznamka?: string | null
-          prechodovy_odpor?: string | null
-          predmet_revize?: string | null
-          projektova_dokumentace?: boolean | null
           razitko_url?: string | null
-          revizni_technik?: string | null
           rozdelovnik?: string | null
-          rozsah_revize?: string | null
-          soucast_revize_neni?: string[] | null
-          technicky_popis?: string | null
-          telefon_montazni_firmy?: string | null
-          telefon_technika?: string | null
-          termin_dalsi_revize?: string | null
-          termin_vizualni_kontroly?: string | null
-          trida_lps?: string | null
-          typ_jimaci_soustavy?: string | null
-          typ_strechy?: string | null
-          typ_uzemnovaci_soustavy?: string | null
+          seznam_priloh?: string[] | null
+          created_at?: string
           updated_at?: string
-          vzdalenost_svodu?: string | null
-          zaver_revize?: string | null
-          zona_ochrany_lpz?: string | null
         }
         Update: {
-          adresa_objektu?: string | null
-          adresa_technika?: string | null
-          budova?: string | null
-          byly_zjisteny_zavady?: boolean | null
-          celkovy_posudek?: string | null
-          cislo_revize?: string | null
-          created_at?: string
-          datum_provedeni?: string | null
-          datum_ukonceni?: string | null
-          datum_vystaveni?: string | null
-          druh_revize?: string | null
-          druh_zeminy?: string | null
-          ekvipotencialni_pospojeni?: string | null
-          elektricka_zarizeni_na_strese?: boolean | null
-          elektricka_zarizeni_popis?: string | null
-          evidencni_cislo?: string | null
           id?: string
-          katastr_annotations?: string | null
+          ev_cislo_zpravy?: string | null
+          vytisk_cislo?: number | null
+          pocet_listu?: number | null
+          pocet_priloh?: number | null
+          typ_revize?: string | null
+          datum_zahajeni?: string | null
+          datum_ukonceni?: string | null
+          datum_vypracovani?: string | null
+          revizni_technik?: string | null
+          adresa_technika?: string | null
+          ev_cislo_osvedceni?: string | null
+          ev_cislo_opravneni?: string | null
+          revizi_pritomni?: string | null
+          nazev_adresa_objektu?: string | null
+          objednatel_revize?: string | null
+          majitel_objektu?: string | null
+          provozovatel_objektu?: string | null
+          montazni_firma_nazev?: string | null
+          montazni_firma_ico?: string | null
+          montazni_firma_ev_opravneni?: string | null
           katastr_map_url?: string | null
-          krytina_strechy?: string | null
-          montazni_firma?: string | null
-          nazev_objektu?: string | null
-          objednavatel?: string | null
-          oblasti_kontroly?: string[] | null
-          pocasi_behem_revize?: string | null
-          pocet_pomocnych_jimacu?: number | null
-          pocet_stran?: number | null
-          pocet_svodu?: number | null
-          pocet_tycovych_jimacu?: number | null
-          pocet_vyhotoveni?: number | null
-          podklad_revize?: string[] | null
+          katastr_annotations?: string | null
+          rozsah_vnejsi_ochrana?: boolean | null
+          rozsah_vnitrni_ochrana?: boolean | null
+          poveternostni_podminky?: string | null
+          typ_objektu?: string | null
+          typ_objektu_jiny?: string | null
+          el_zarizeni_na_strese?: string | null
+          trida_lps?: string | null
+          typ_jimaci_soustavy?: string[] | null
+          velikost_ok_mrizove?: string | null
+          vyska_tycoveho_jimace?: string | null
+          material_strechy?: string | null
+          typ_zemnci_soustavy?: string | null
+          druh_zeminy?: string[] | null
+          stav_zeminy?: string[] | null
+          zony_ochrany_lpz?: string[] | null
+          potencialove_vyrovnani?: string[] | null
+          predmet_revize?: string | null
+          predmet_revize_nebylo?: string | null
+          rozsah_vnejsi?: boolean | null
+          rozsah_vnitrni?: boolean | null
+          rozsah_staticka?: boolean | null
+          rozsah_uzemneni?: boolean | null
+          predlozene_doklady?: Json | null
+          technicky_popis?: string | null
+          inspection_checklist?: Json | null
+          metoda_mereni?: string | null
+          zjistene_zavady?: string | null
+          zaver_text?: string | null
+          stav_od_posledni_revize?: string | null
+          celkovy_posudek?: string | null
+          termin_lps_kriticke?: string | null
+          termin_lps_ostatni?: string | null
+          termin_lps_vybuch?: string | null
+          misto_podpisu?: string | null
+          datum_predani?: string | null
           podpis_objednavatele?: string | null
           podpis_technika?: string | null
-          popis_zavad?: string | null
-          poveternostni_podminky?: string | null
-          poznamka?: string | null
-          prechodovy_odpor?: string | null
-          predmet_revize?: string | null
-          projektova_dokumentace?: boolean | null
           razitko_url?: string | null
-          revizni_technik?: string | null
           rozdelovnik?: string | null
-          rozsah_revize?: string | null
-          soucast_revize_neni?: string[] | null
-          technicky_popis?: string | null
-          telefon_montazni_firmy?: string | null
-          telefon_technika?: string | null
-          termin_dalsi_revize?: string | null
-          termin_vizualni_kontroly?: string | null
-          trida_lps?: string | null
-          typ_jimaci_soustavy?: string | null
-          typ_strechy?: string | null
-          typ_uzemnovaci_soustavy?: string | null
+          seznam_priloh?: string[] | null
+          created_at?: string
           updated_at?: string
-          vzdalenost_svodu?: string | null
-          zaver_revize?: string | null
-          zona_ochrany_lpz?: string | null
         }
         Relationships: []
       }
-      report_instruments: {
+      report_spd_devices: {
         Row: {
-          cislo_kalibrace: string | null
           id: string
-          nazev_pristroje: string | null
           report_id: string
+          vyrobce: string | null
+          typove_oznaceni: string | null
+          misto_instalace: string | null
           sort_order: number | null
-          typ_pristroje: string | null
-          vyrobni_cislo: string | null
         }
         Insert: {
-          cislo_kalibrace?: string | null
           id?: string
-          nazev_pristroje?: string | null
           report_id: string
+          vyrobce?: string | null
+          typove_oznaceni?: string | null
+          misto_instalace?: string | null
           sort_order?: number | null
-          typ_pristroje?: string | null
-          vyrobni_cislo?: string | null
         }
         Update: {
-          cislo_kalibrace?: string | null
           id?: string
-          nazev_pristroje?: string | null
           report_id?: string
+          vyrobce?: string | null
+          typove_oznaceni?: string | null
+          misto_instalace?: string | null
           sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_spd_devices_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_instruments: {
+        Row: {
+          id: string
+          report_id: string
+          nazev_pristroje: string | null
+          typ_pristroje: string | null
+          vyrobni_cislo: string | null
+          cislo_kalibracniho_listu: string | null
+          datum_kalibrace: string | null
+          firma_kalibrace: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          nazev_pristroje?: string | null
           typ_pristroje?: string | null
           vyrobni_cislo?: string | null
+          cislo_kalibracniho_listu?: string | null
+          datum_kalibrace?: string | null
+          firma_kalibrace?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          nazev_pristroje?: string | null
+          typ_pristroje?: string | null
+          vyrobni_cislo?: string | null
+          cislo_kalibracniho_listu?: string | null
+          datum_kalibrace?: string | null
+          firma_kalibrace?: string | null
+          sort_order?: number | null
         }
         Relationships: [
           {
@@ -235,57 +298,34 @@ export type Database = {
       report_measurements: {
         Row: {
           id: string
-          odpor_zemnice: number | null
-          oznaceni_svodu: string | null
           report_id: string
+          oznaceni_zkusebni_svorky: string | null
+          odpor_s_vodicem: number | null
+          odpor_bez_vodice: number | null
+          prechodovy_odpor: number | null
           sort_order: number | null
         }
         Insert: {
           id?: string
-          odpor_zemnice?: number | null
-          oznaceni_svodu?: string | null
           report_id: string
+          oznaceni_zkusebni_svorky?: string | null
+          odpor_s_vodicem?: number | null
+          odpor_bez_vodice?: number | null
+          prechodovy_odpor?: number | null
           sort_order?: number | null
         }
         Update: {
           id?: string
-          odpor_zemnice?: number | null
-          oznaceni_svodu?: string | null
           report_id?: string
+          oznaceni_zkusebni_svorky?: string | null
+          odpor_s_vodicem?: number | null
+          odpor_bez_vodice?: number | null
+          prechodovy_odpor?: number | null
           sort_order?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "report_measurements_report_id_fkey"
-            columns: ["report_id"]
-            isOneToOne: false
-            referencedRelation: "inspection_reports"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      report_standards: {
-        Row: {
-          id: string
-          norma: string
-          report_id: string
-          sort_order: number | null
-        }
-        Insert: {
-          id?: string
-          norma: string
-          report_id: string
-          sort_order?: number | null
-        }
-        Update: {
-          id?: string
-          norma?: string
-          report_id?: string
-          sort_order?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_standards_report_id_fkey"
             columns: ["report_id"]
             isOneToOne: false
             referencedRelation: "inspection_reports"
@@ -315,116 +355,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {

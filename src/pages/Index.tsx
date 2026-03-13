@@ -9,14 +9,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Zap, Plus, Search, FileText, Calendar, User, Building2, Pencil, Trash2, Download, BarChart3, PieChart, CheckCircle2, AlertTriangle, XCircle, LogIn, LogOut } from "lucide-react";
+import { Zap, Plus, Search, FileText, Calendar, User, Building2, Pencil, Trash2, Download, BarChart3, PieChart, CheckCircle2, XCircle, LogIn, LogOut } from "lucide-react";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { cs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/lib/pdfExport";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell, ResponsiveContainer, CartesianGrid } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
+
+import type { Tables } from "@/integrations/supabase/types";
+type Instrument = Tables<"report_instruments">;
+type Measurement = Tables<"report_measurements">;
+type SpdDevice = Tables<"report_spd_devices">;
 
 export default function Index() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,7 +39,7 @@ export default function Index() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inspection_reports")
-        .select("id, cislo_revize, objednavatel, adresa_objektu, nazev_objektu, datum_provedeni, celkovy_posudek, revizni_technik, druh_revize, created_at")
+        .select("id, ev_cislo_zpravy, objednatel_revize, nazev_adresa_objektu, datum_zahajeni, celkovy_posudek, revizni_technik, typ_revize, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -45,28 +50,23 @@ export default function Index() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matchesSearch =
-        r.cislo_revize?.toLowerCase().includes(q) ||
-        r.objednavatel?.toLowerCase().includes(q) ||
-        r.adresa_objektu?.toLowerCase().includes(q);
+        r.ev_cislo_zpravy?.toLowerCase().includes(q) ||
+        r.objednatel_revize?.toLowerCase().includes(q) ||
+        r.nazev_adresa_objektu?.toLowerCase().includes(q);
       if (!matchesSearch) return false;
     }
     if (filterDatumOd || filterDatumDo) {
-      const date = r.datum_provedeni ? new Date(r.datum_provedeni) : r.created_at ? new Date(r.created_at) : null;
+      const date = r.datum_zahajeni ? new Date(r.datum_zahajeni) : r.created_at ? new Date(r.created_at) : null;
       if (!date) return false;
       if (filterDatumOd && date < new Date(filterDatumOd + "T00:00:00")) return false;
       if (filterDatumDo && date > new Date(filterDatumDo + "T23:59:59")) return false;
     }
     if (filterPosudek !== "all") {
-      if (filterPosudek === "ok" && r.celkovy_posudek !== "Soustava hromosvodu je schopná bezpečného provozu") return false;
-      if (filterPosudek === "warn" && r.celkovy_posudek !== "Soustava vyžaduje opravu") return false;
-      if (filterPosudek === "bad" && r.celkovy_posudek !== "Soustava není bezpečná") return false;
-      if (filterPosudek === "none") {
-        const hasKnown = r.celkovy_posudek === "Soustava hromosvodu je schopná bezpečného provozu" ||
-          r.celkovy_posudek === "Soustava vyžaduje opravu" || r.celkovy_posudek === "Soustava není bezpečná";
-        if (hasKnown) return false;
-      }
+      if (filterPosudek === "ok" && r.celkovy_posudek !== "v souladu") return false;
+      if (filterPosudek === "bad" && r.celkovy_posudek !== "není v souladu") return false;
+      if (filterPosudek === "none" && (r.celkovy_posudek === "v souladu" || r.celkovy_posudek === "není v souladu")) return false;
     }
-    if (filterDruh !== "all" && r.druh_revize !== filterDruh) return false;
+    if (filterDruh !== "all" && r.typ_revize !== filterDruh) return false;
     return true;
   });
 
@@ -83,32 +83,18 @@ export default function Index() {
 
   const handleExport = async (id: string) => {
     try {
-      const { data: report } = await supabase
-        .from("inspection_reports")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      const { data: standards } = await supabase
-        .from("report_standards")
-        .select("*")
-        .eq("report_id", id)
-        .order("sort_order");
-
-      const { data: instruments } = await supabase
-        .from("report_instruments")
-        .select("*")
-        .eq("report_id", id)
-        .order("sort_order");
-
-      const { data: measurements } = await supabase
-        .from("report_measurements")
-        .select("*")
-        .eq("report_id", id)
-        .order("sort_order");
+      const { data: report } = await supabase.from("inspection_reports").select("*").eq("id", id).single();
+      const { data: instruments } = await supabase.from("report_instruments").select("*").eq("report_id", id).order("sort_order");
+      const { data: measurements } = await supabase.from("report_measurements").select("*").eq("report_id", id).order("sort_order");
+      const { data: spdDevices } = await supabase.from("report_spd_devices").select("*").eq("report_id", id).order("sort_order");
 
       if (report) {
-        generatePDF(report, standards || [], instruments || [], measurements || []);
+        generatePDF(
+          report,
+          (instruments || []) as Instrument[],
+          (measurements || []) as Measurement[],
+          (spdDevices || []) as SpdDevice[]
+        );
       }
     } catch {
       toast({ title: "Chyba", description: "Nepodařilo se exportovat zprávu.", variant: "destructive" });
@@ -116,32 +102,27 @@ export default function Index() {
   };
 
   const posudekBadge = (posudek: string | null) => {
-    if (posudek === "Soustava hromosvodu je schopná bezpečného provozu")
+    if (posudek === "v souladu")
       return { variant: "default" as const, className: "bg-emerald-600 hover:bg-emerald-600/90 text-white border-0" };
-    if (posudek === "Soustava vyžaduje opravu")
-      return { variant: "secondary" as const, className: "bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200" };
-    if (posudek === "Soustava není bezpečná")
+    if (posudek === "není v souladu")
       return { variant: "destructive" as const, className: "" };
     return { variant: "outline" as const, className: "text-muted-foreground" };
   };
 
   const posudekShort = (posudek: string | null) => {
-    if (posudek === "Soustava hromosvodu je schopná bezpečného provozu") return "Schopná provozu";
-    if (posudek === "Soustava vyžaduje opravu") return "Vyžaduje opravu";
-    if (posudek === "Soustava není bezpečná") return "Není bezpečná";
+    if (posudek === "v souladu") return "V souladu";
+    if (posudek === "není v souladu") return "Není v souladu";
     return "Bez posudku";
   };
 
   const posudekChartData = useMemo(() => {
     if (!reports) return [];
-    const ok = reports.filter(r => r.celkovy_posudek === "Soustava hromosvodu je schopná bezpečného provozu").length;
-    const warn = reports.filter(r => r.celkovy_posudek === "Soustava vyžaduje opravu").length;
-    const bad = reports.filter(r => r.celkovy_posudek === "Soustava není bezpečná").length;
-    const none = reports.length - ok - warn - bad;
+    const ok = reports.filter(r => r.celkovy_posudek === "v souladu").length;
+    const bad = reports.filter(r => r.celkovy_posudek === "není v souladu").length;
+    const none = reports.length - ok - bad;
     return [
-      { name: "Schopná provozu", value: ok, color: "hsl(142 71% 45%)" },
-      { name: "Vyžaduje opravu", value: warn, color: "hsl(38 92% 50%)" },
-      { name: "Není bezpečná", value: bad, color: "hsl(0 72% 51%)" },
+      { name: "V souladu", value: ok, color: "hsl(142 71% 45%)" },
+      { name: "Není v souladu", value: bad, color: "hsl(0 72% 51%)" },
       { name: "Bez posudku", value: none, color: "hsl(215 15% 50%)" },
     ].filter(d => d.value > 0);
   }, [reports]);
@@ -153,7 +134,7 @@ export default function Index() {
       const d = subMonths(new Date(), i);
       const start = startOfMonth(d);
       const count = reports.filter(r => {
-        const date = r.datum_provedeni ? new Date(r.datum_provedeni) : r.created_at ? new Date(r.created_at) : null;
+        const date = r.datum_zahajeni ? new Date(r.datum_zahajeni) : r.created_at ? new Date(r.created_at) : null;
         if (!date) return false;
         const reportMonth = startOfMonth(date);
         return reportMonth.getTime() === start.getTime();
@@ -165,7 +146,6 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
       <nav className="nav-bar">
         <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -199,14 +179,12 @@ export default function Index() {
       </nav>
 
       <div className="page-content">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revizní zprávy</h1>
-          <p className="text-muted-foreground mt-1">Hromosvody Vitmajer – správa revizí</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revizní zprávy LPS</h1>
+          <p className="text-muted-foreground mt-1">Hromosvody Vitmajer – správa revizí dle ČSN EN 62305</p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-primary">{reports?.length ?? 0}</div>
@@ -218,21 +196,10 @@ export default function Index() {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 <span className="text-2xl font-bold text-emerald-600">
-                  {reports?.filter(r => r.celkovy_posudek === "Soustava hromosvodu je schopná bezpečného provozu").length ?? 0}
+                  {reports?.filter(r => r.celkovy_posudek === "v souladu").length ?? 0}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">Schopné provozu</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-600" />
-                <span className="text-2xl font-bold text-amber-600">
-                  {reports?.filter(r => r.celkovy_posudek === "Soustava vyžaduje opravu").length ?? 0}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Vyžaduje opravu</p>
+              <p className="text-sm text-muted-foreground mt-1">V souladu</p>
             </CardContent>
           </Card>
           <Card>
@@ -240,15 +207,14 @@ export default function Index() {
               <div className="flex items-center gap-2">
                 <XCircle className="w-5 h-5 text-destructive" />
                 <span className="text-2xl font-bold text-destructive">
-                  {reports?.filter(r => r.celkovy_posudek === "Soustava není bezpečná").length ?? 0}
+                  {reports?.filter(r => r.celkovy_posudek === "není v souladu").length ?? 0}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">Není bezpečná</p>
+              <p className="text-sm text-muted-foreground mt-1">Není v souladu</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Charts */}
         {reports && reports.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {posudekChartData.length > 0 && (
@@ -262,10 +228,9 @@ export default function Index() {
                 <CardContent>
                   <ChartContainer
                     config={{
-                      Schopná: { label: "Schopná provozu", color: "hsl(142 71% 45%)" },
-                      Vyžaduje: { label: "Vyžaduje opravu", color: "hsl(38 92% 50%)" },
-                      Není: { label: "Není bezpečná", color: "hsl(0 72% 51%)" },
-                      Bez: { label: "Bez posudku", color: "hsl(215 15% 50%)" },
+                      ok: { label: "V souladu", color: "hsl(142 71% 45%)" },
+                      bad: { label: "Není v souladu", color: "hsl(0 72% 51%)" },
+                      none: { label: "Bez posudku", color: "hsl(215 15% 50%)" },
                     }}
                     className="h-[240px] w-full"
                   >
@@ -317,12 +282,11 @@ export default function Index() {
           </div>
         )}
 
-        {/* Search & Filters */}
         <div className="space-y-4 mb-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Hledat dle čísla revize, objednavatele nebo adresy..."
+              placeholder="Hledat dle čísla zprávy, objednavatele nebo adresy..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-11"
@@ -331,33 +295,20 @@ export default function Index() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Datum od</Label>
-              <Input
-                type="date"
-                value={filterDatumOd}
-                onChange={(e) => setFilterDatumOd(e.target.value)}
-                className="h-9 w-[140px]"
-              />
+              <Input type="date" value={filterDatumOd} onChange={(e) => setFilterDatumOd(e.target.value)} className="h-9 w-[140px]" />
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Datum do</Label>
-              <Input
-                type="date"
-                value={filterDatumDo}
-                onChange={(e) => setFilterDatumDo(e.target.value)}
-                className="h-9 w-[140px]"
-              />
+              <Input type="date" value={filterDatumDo} onChange={(e) => setFilterDatumDo(e.target.value)} className="h-9 w-[140px]" />
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Posudek</Label>
               <Select value={filterPosudek} onValueChange={setFilterPosudek}>
-                <SelectTrigger className="h-9 w-[160px]">
-                  <SelectValue placeholder="Vše" />
-                </SelectTrigger>
+                <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Vše" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Vše</SelectItem>
-                  <SelectItem value="ok">Schopná provozu</SelectItem>
-                  <SelectItem value="warn">Vyžaduje opravu</SelectItem>
-                  <SelectItem value="bad">Není bezpečná</SelectItem>
+                  <SelectItem value="ok">V souladu</SelectItem>
+                  <SelectItem value="bad">Není v souladu</SelectItem>
                   <SelectItem value="none">Bez posudku</SelectItem>
                 </SelectContent>
               </Select>
@@ -365,9 +316,7 @@ export default function Index() {
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Druh</Label>
               <Select value={filterDruh} onValueChange={setFilterDruh}>
-                <SelectTrigger className="h-9 w-[140px]">
-                  <SelectValue placeholder="Vše" />
-                </SelectTrigger>
+                <SelectTrigger className="h-9 w-[140px]"><SelectValue placeholder="Vše" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Vše</SelectItem>
                   <SelectItem value="výchozí">Výchozí</SelectItem>
@@ -394,7 +343,6 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Table */}
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -413,7 +361,7 @@ export default function Index() {
                     ? "Žádné výsledky pro zvolené filtry"
                     : "Zatím žádné revizní zprávy"}
                 </p>
-                {!searchQuery && !filterDatumOd && !filterDatumDo && filterPosudek === "all" && filterDruh === "all" && (
+                {!searchQuery && !filterDatumOd && !filterDatumDo && filterPosudek === "all" && filterDruh === "all" && isAdmin && (
                   <Button className="mt-4" onClick={() => navigate("/report/new")}>
                     <Plus className="w-4 h-4 mr-2" />
                     Vytvořit první zprávu
@@ -424,8 +372,8 @@ export default function Index() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Číslo revize</TableHead>
-                    <TableHead>Objednavatel</TableHead>
+                    <TableHead>Ev. č. zprávy</TableHead>
+                    <TableHead>Objednatel</TableHead>
                     <TableHead className="hidden md:table-cell">Adresa objektu</TableHead>
                     <TableHead className="hidden lg:table-cell">Datum</TableHead>
                     <TableHead className="hidden lg:table-cell">Druh</TableHead>
@@ -438,31 +386,31 @@ export default function Index() {
                     <TableRow key={report.id}>
                       <TableCell>
                         <span className="font-mono font-semibold text-primary">
-                          {report.cislo_revize || "—"}
+                          {report.ev_cislo_zpravy || "—"}
                         </span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span>{report.objednavatel || "—"}</span>
+                          <span>{report.objednatel_revize || "—"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Building2 className="w-3.5 h-3.5 shrink-0" />
-                          {report.adresa_objektu || "—"}
+                          {report.nazev_adresa_objektu || "—"}
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 shrink-0" />
-                          {report.datum_provedeni
-                            ? format(new Date(report.datum_provedeni), "dd.MM.yyyy", { locale: cs })
+                          {report.datum_zahajeni
+                            ? format(new Date(report.datum_zahajeni), "dd.MM.yyyy", { locale: cs })
                             : "—"}
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell capitalize">
-                        {report.druh_revize || "—"}
+                        {report.typ_revize || "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={posudekBadge(report.celkovy_posudek).variant} className={posudekBadge(report.celkovy_posudek).className}>
@@ -471,34 +419,16 @@ export default function Index() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleExport(report.id)}
-                            title="Exportovat PDF"
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleExport(report.id)} title="Exportovat PDF">
                             <Download className="w-4 h-4" />
                           </Button>
                           {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => navigate(`/report/${report.id}/edit`)}
-                              title="Upravit"
-                            >
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/report/${report.id}/edit`)} title="Upravit">
                               <Pencil className="w-4 h-4" />
                             </Button>
                           )}
                           {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDelete(report.id)}
-                              title="Smazat"
-                            >
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(report.id)} title="Smazat">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
