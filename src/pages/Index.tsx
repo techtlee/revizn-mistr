@@ -9,7 +9,29 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Zap, Plus, Search, FileText, Calendar, User, Building2, Pencil, Trash2, Download, BarChart3, PieChart, CheckCircle2, XCircle, LogIn, LogOut, Settings } from "lucide-react";
+import {
+  Zap,
+  Plus,
+  Search,
+  FileText,
+  Calendar,
+  User,
+  Building2,
+  Pencil,
+  Trash2,
+  Download,
+  BarChart3,
+  PieChart,
+  CheckCircle2,
+  XCircle,
+  LogIn,
+  LogOut,
+  Library,
+  ChevronDown,
+  ClipboardList,
+  ListTree,
+  SlidersHorizontal,
+} from "lucide-react";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { cs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +39,14 @@ import { generatePDF } from "@/lib/pdfExport";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import type { Tables } from "@/integrations/supabase/types";
 type Instrument = Tables<"report_instruments">;
@@ -159,12 +189,61 @@ export default function Index() {
         <div className="ml-auto flex items-center gap-2 shrink-0">
           {isAdmin && (
             <>
-              <Button variant="outline" size="sm" className="text-sm" asChild>
-                <Link to="/settings">
-                  <Settings className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Nastavení</span>
-                </Link>
-              </Button>
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" className="text-sm rounded-r-none border-r-0 pr-2 sm:pr-3" asChild>
+                  <Link to="/settings">
+                    <Library className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Knihovna</span>
+                  </Link>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-sm rounded-l-none px-2" aria-label="Rychlý vstup do knihovny">
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Knihovna — rychlý vstup</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="cursor-pointer">
+                        <Library className="w-4 h-4 mr-2" />
+                        Přehled
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings/firmy" className="cursor-pointer">
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Montážní firmy
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings/pristroje" className="cursor-pointer">
+                        <ClipboardList className="w-4 h-4 mr-2" />
+                        Přístroje
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings/sablony-popisu" className="cursor-pointer">
+                        <FileText className="w-4 h-4 mr-2" />
+                        Šablony popisu
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings/zavady" className="cursor-pointer">
+                        <ListTree className="w-4 h-4 mr-2" />
+                        Časté závady
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings/vychozi-hodnoty" className="cursor-pointer">
+                        <SlidersHorizontal className="w-4 h-4 mr-2" />
+                        Výchozí hodnoty
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <Button onClick={() => navigate("/report/new")} size="sm" className="text-sm">
                 <Plus className="w-4 h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Nová revize</span>

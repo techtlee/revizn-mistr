@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { mergePinnedDefaultsIntoForm, parseFormSettingsJson } from "./formSettings";
+import { mergePinnedDefaultsIntoForm, parsePinnedDefaultsJson } from "./formSettings";
 
-describe("parseFormSettingsJson", () => {
-  it("returns defaults for invalid input", () => {
-    const d = parseFormSettingsJson(null);
-    expect(d.savedCompanies).toEqual([]);
-    expect(d.pinnedDefaults).toEqual({});
+describe("parsePinnedDefaultsJson", () => {
+  it("returns empty object for invalid input", () => {
+    const d = parsePinnedDefaultsJson(null);
+    expect(d).toEqual({});
   });
 });
 

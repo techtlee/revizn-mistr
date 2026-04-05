@@ -3,12 +3,13 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type ReportRow = Tables<"inspection_reports">;
 
-const savedCompanySchema = z.object({
-  id: z.string(),
-  nazev: z.string(),
-  ico: z.string(),
-  ev_opravneni: z.string(),
-});
+/** Combobox / shared library (subset of DB row). */
+export type SavedCompany = {
+  id: string;
+  nazev: string;
+  ico: string;
+  ev_opravneni: string;
+};
 
 const savedInstrumentTemplateSchema = z.object({
   id: z.string(),
@@ -66,32 +67,14 @@ const pinnedDefaultsInnerSchema = z
   })
   .partial();
 
-export const formSettingsDocumentSchema = z.object({
-  savedCompanies: z.array(savedCompanySchema).default([]),
-  savedMeasuringInstruments: z.array(savedInstrumentTemplateSchema).default([]),
-  technicalDescriptionTemplates: z.array(technicalDescriptionTemplateSchema).default([]),
-  commonDefects: z.array(commonDefectSchema).default([]),
-  pinnedDefaults: pinnedDefaultsInnerSchema.default({}),
-});
-
-export type SavedCompany = z.infer<typeof savedCompanySchema>;
 export type SavedInstrumentTemplate = z.infer<typeof savedInstrumentTemplateSchema>;
 export type TechnicalDescriptionTemplate = z.infer<typeof technicalDescriptionTemplateSchema>;
 export type CommonDefectItem = z.infer<typeof commonDefectSchema>;
-export type FormSettingsDocument = z.infer<typeof formSettingsDocumentSchema>;
 
-export const emptyFormSettingsDocument = (): FormSettingsDocument => ({
-  savedCompanies: [],
-  savedMeasuringInstruments: [],
-  technicalDescriptionTemplates: [],
-  commonDefects: [],
-  pinnedDefaults: {},
-});
-
-export function parseFormSettingsJson(raw: unknown): FormSettingsDocument {
-  const parsed = formSettingsDocumentSchema.safeParse(raw);
+export function parsePinnedDefaultsJson(raw: unknown): PinnedDefaults {
+  const parsed = pinnedDefaultsInnerSchema.safeParse(raw);
   if (parsed.success) return parsed.data;
-  return emptyFormSettingsDocument();
+  return {};
 }
 
 /** Merge only whitelisted pinned keys onto the base form (new report). */
