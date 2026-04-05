@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ReportForm from "./pages/ReportForm";
+import FormSettings from "./pages/FormSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/settings" element={<FormSettings />} />
               <Route path="/report/new" element={<ReportForm />} />
               <Route path="/report/:id/edit" element={<ReportForm />} />
               <Route path="*" element={<NotFound />} />

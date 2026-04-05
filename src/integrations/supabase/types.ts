@@ -216,6 +216,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_form_settings: {
+        Row: {
+          user_id: string
+          settings: Json
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          settings?: Json
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_spd_devices: {
         Row: {
           id: string

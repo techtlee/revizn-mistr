@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Zap, Plus, Search, FileText, Calendar, User, Building2, Pencil, Trash2, Download, BarChart3, PieChart, CheckCircle2, XCircle, LogIn, LogOut } from "lucide-react";
+import { Zap, Plus, Search, FileText, Calendar, User, Building2, Pencil, Trash2, Download, BarChart3, PieChart, CheckCircle2, XCircle, LogIn, LogOut, Settings } from "lucide-react";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { cs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -158,11 +158,19 @@ export default function Index() {
         </Link>
         <div className="ml-auto flex items-center gap-2 shrink-0">
           {isAdmin && (
-            <Button onClick={() => navigate("/report/new")} size="sm" className="text-sm">
-              <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Nová revize</span>
-              <span className="sm:hidden">Nová</span>
-            </Button>
+            <>
+              <Button variant="outline" size="sm" className="text-sm" asChild>
+                <Link to="/settings">
+                  <Settings className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Nastavení</span>
+                </Link>
+              </Button>
+              <Button onClick={() => navigate("/report/new")} size="sm" className="text-sm">
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Nová revize</span>
+                <span className="sm:hidden">Nová</span>
+              </Button>
+            </>
           )}
           {isAdmin ? (
             <Button variant="outline" size="sm" onClick={() => signOut()} className="text-sm">

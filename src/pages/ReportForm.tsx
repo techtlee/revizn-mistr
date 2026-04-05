@@ -20,6 +20,9 @@ import FormStepper, { type Step } from "@/components/FormStepper";
 import InspectionChecklist, { CHECKLIST_E11, CHECKLIST_E12 } from "@/components/InspectionChecklist";
 import { generatePDF } from "@/lib/pdfExport";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormSettingsQuery, useUpsertFormSettings } from "@/hooks/useFormSettings";
+import CompanyCombobox from "@/components/CompanyCombobox";
+import { mergePinnedDefaultsIntoForm, newId } from "@/lib/formSettings";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Report = Tables<"inspection_reports">;
@@ -89,19 +92,8 @@ function FField({ label, children, full }: { label: string; children: React.Reac
   );
 }
 
-export default function ReportForm() {
-  const { id } = useParams<{ id: string }>();
-  const isEdit = !!id;
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [loading, setLoading] = useState(isEdit);
-  const [currentStep, setCurrentStep] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [form, setForm] = useState<Partial<Report>>({
+function getDefaultReportForm(): Partial<Report> {
+  return {
     typ_revize: "pravidelná",
     trida_lps: "III",
     rozsah_vnejsi_ochrana: false,
@@ -118,7 +110,25 @@ export default function ReportForm() {
     seznam_priloh: [],
     inspection_checklist: {},
     predlozene_doklady: {},
-  });
+  };
+}
+
+export default function ReportForm() {
+  const { id } = useParams<{ id: string }>();
+  const isEdit = !!id;
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
+  const [currentStep, setCurrentStep] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [form, setForm] = useState<Partial<Report>>(getDefaultReportForm);
+  const pinnedMergedRef = useRef(false);
+  const { data: formSettingsDoc } = useFormSettingsQuery();
+  const upsertFormSettings = useUpsertFormSettings();
 
   const [instruments, setInstruments] = useState<Record<string, string | number | null>[]>([]);
   const [measurements, setMeasurements] = useState<Record<string, string | number | null>[]>([]);
@@ -127,6 +137,12 @@ export default function ReportForm() {
   useEffect(() => {
     if (isEdit && !authLoading && !user) navigate("/login");
   }, [isEdit, authLoading, user, navigate]);
+
+  useEffect(() => {
+    if (isEdit || !user || !formSettingsDoc || pinnedMergedRef.current) return;
+    pinnedMergedRef.current = true;
+    setForm(f => mergePinnedDefaultsIntoForm({ ...f }, formSettingsDoc.pinnedDefaults));
+  }, [isEdit, user, formSettingsDoc]);
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -245,6 +261,44 @@ export default function ReportForm() {
   const goNext = () => setCurrentStep(s => Math.min(s + 1, STEPS.length - 1));
   const goPrev = () => setCurrentStep(s => Math.max(s - 1, 0));
 
+  const handleSaveCompanyToSettings = () => {
+    if (!user || !formSettingsDoc) {
+      toast({
+        title: "Přihlášení vyžadováno",
+        description: "Pro uložení firmy do nastavení se přihlaste.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const nazev = (form.montazni_firma_nazev || "").trim();
+    if (!nazev) {
+      toast({
+        title: "Chybí název",
+        description: "Vyplňte název montážní firmy.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const company = {
+      id: newId(),
+      nazev,
+      ico: (form.montazni_firma_ico || "").trim(),
+      ev_opravneni: (form.montazni_firma_ev_opravneni || "").trim(),
+    };
+    const rest = formSettingsDoc.savedCompanies.filter(
+      c => c.nazev.trim().toLowerCase() !== nazev.toLowerCase(),
+    );
+    upsertFormSettings.mutate(
+      { ...formSettingsDoc, savedCompanies: [...rest, company] },
+      {
+        onSuccess: () =>
+          toast({ title: "Uloženo", description: "Firma byla přidána do nastavení." }),
+        onError: () =>
+          toast({ title: "Chyba", description: "Nepodařilo se uložit firmu.", variant: "destructive" }),
+      },
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -351,8 +405,30 @@ export default function ReportForm() {
             <FField label="Provozovatel objektu">
               <Input value={form.provozovatel_objektu || ""} onChange={e => set("provozovatel_objektu", e.target.value)} />
             </FField>
-            <FField label="Montážní firma – název">
-              <Input value={form.montazni_firma_nazev || ""} onChange={e => set("montazni_firma_nazev", e.target.value)} />
+            <FField label="Montážní firma – název" full>
+              <CompanyCombobox
+                value={form.montazni_firma_nazev || ""}
+                onValueChange={v => set("montazni_firma_nazev", v)}
+                companies={formSettingsDoc?.savedCompanies ?? []}
+                onPickCompany={c => {
+                  set("montazni_firma_nazev", c.nazev);
+                  set("montazni_firma_ico", c.ico);
+                  set("montazni_firma_ev_opravneni", c.ev_opravneni);
+                }}
+              />
+              {user ? (
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveCompanyToSettings}
+                    disabled={upsertFormSettings.isPending}
+                  >
+                    Uložit firmu do nastavení
+                  </Button>
+                </div>
+              ) : null}
             </FField>
             <FField label="Montážní firma – IČ">
               <Input value={form.montazni_firma_ico || ""} onChange={e => set("montazni_firma_ico", e.target.value)} />
