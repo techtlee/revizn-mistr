@@ -88,44 +88,59 @@ function buildHTML(
 
   return `
 <style>
+  :root {
+    --space-1: 4px;
+    --space-2: 6px;
+    --space-3: 8px;
+    --space-4: 10px;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  .doc-flow {
+    width: 794px;
+  }
   .page {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 9.5pt;
+    font-size: 10pt;
     color: #111;
     line-height: 1.4;
     padding: 48px 52px;
     background: #fff;
     width: 794px;
+    height: 1122px; /* A4 ratio at 794px width */
+    overflow: hidden;
+  }
+  .page * {
+    font-family: Arial, Helvetica, sans-serif !important;
   }
   h1 { font-size: 14pt; font-weight: bold; color: #004ffe; text-align: center; margin-bottom: 2px; }
   .subtitle { text-align: center; color: #555; font-size: 8pt; margin-bottom: 16px; }
-  .sec { margin-bottom: 12px; border: 1px solid #ccc; border-radius: 3px; overflow: hidden; }
+  .sec { margin-bottom: var(--space-4); border: 1px solid #cfd6de; border-radius: 3px; overflow: hidden; break-inside: avoid; }
   .st { background: #004ffe; color: #fff; padding: 4px 8px; font-weight: bold; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; }
-  .sb { padding: 6px 8px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 14px; }
-  .field { margin-bottom: 2px; }
-  .fl { font-size: 7pt; color: #666; font-weight: bold; }
-  .fv { font-size: 9pt; border-bottom: 1px solid #ddd; padding-bottom: 1px; min-height: 14px; word-break: break-word; }
+  .sb { padding: var(--space-3) var(--space-4); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2) 14px; }
+  .field { margin-bottom: 2px; break-inside: avoid; }
+  .fl { font-size: 7pt; color: #666; font-weight: bold; margin-bottom: 3px; line-height: 1.15; }
+  .fv { font-size: 9.5pt; line-height: 1.25; border-bottom: 1px solid #d9e0e8; padding: 3px 0 5px; min-height: 24px; overflow-wrap: anywhere; }
   .field-full { grid-column: 1 / -1; }
-  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-top: 3px; }
-  th { background: #e8edf2; text-align: left; padding: 3px 5px; font-size: 7.5pt; border: 1px solid #ccc; }
-  td { padding: 2px 5px; border: 1px solid #ddd; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9pt; margin-top: 4px; line-height: 1.4; }
+  th { background: #e8edf2; text-align: left; padding: 5px 6px; font-size: 8pt; border: 1px solid #cfd6de; vertical-align: middle; overflow-wrap: anywhere; }
+  td { padding: 5px 6px; border: 1px solid #d9e0e8; vertical-align: middle; min-height: 22px; overflow-wrap: anywhere; }
   .sig-area { border: 1px solid #ccc; height: 50px; border-radius: 3px; background: #fafafa; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 8pt; margin-top: 3px; }
   .sig-img { max-height: 50px; max-width: 160px; margin-top: 3px; }
   .posudek { font-weight: bold; padding: 4px 8px; border-radius: 3px; display: inline-block; margin-top: 3px; font-size: 9pt; }
   .posudek-ok { background: #d1fae5; color: #065f46; }
   .posudek-bad { background: #fee2e2; color: #991b1b; }
-  .tag { display: inline-block; background: #e8edf2; border: 1px solid #c5cfd8; border-radius: 2px; padding: 0 5px; font-size: 7.5pt; margin: 1px 1px; }
-  .badge-ok { background: #d1fae5; color: #065f46; padding: 1px 6px; border-radius: 2px; font-size: 7.5pt; font-weight: bold; }
-  .badge-na { color: #999; font-size: 8pt; }
-  .ck-group { margin-bottom: 8px; }
-  .ck-title { font-weight: bold; font-size: 8.5pt; margin-bottom: 2px; color: #333; }
-  .ck th:last-child, .ck td:last-child { text-align: center; }
+  .tag { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; background: transparent; border: 0; border-radius: 0; padding: 0; min-height: 0; font-size: 8pt; line-height: 1.2; margin: 0 0 2px 0; }
+  .badge-ok { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; background: transparent; color: #065f46; padding: 0; min-height: 0; border-radius: 0; font-size: 7.5pt; line-height: 1.2; font-weight: bold; }
+  .badge-na { display: inline-flex; align-items: center; justify-content: center; min-height: 20px; color: #999; font-size: 8pt; line-height: 1; vertical-align: middle; }
+  .ck-group { margin-bottom: var(--space-3); }
+  .ck-title { font-weight: bold; font-size: 8.5pt; margin-bottom: 2px; color: #333; break-inside: avoid; }
+  .ck th:last-child, .ck td:last-child { text-align: center; vertical-align: middle; }
   .ref { font-size: 7.5pt; color: #555; }
+  tr { break-inside: avoid; }
 </style>
-<div class="page">
+<div class="doc-flow">
   <h1>ZPRÁVA O REVIZI LPS</h1>
   <div class="subtitle">Revize provedena v souladu s NV 190/2022 Sb., ČSN 33 1500 a ČSN EN 62305-1 až 4 ed.2</div>
 
@@ -164,11 +179,11 @@ function buildHTML(
     </div>
     ${report.katastr_map_url ? (() => {
       const ar = annotationResult;
-      const aspectRatio = ar ? `${ar.width}/${ar.height}` : "2/1";
+      const aspectRatio = "2/1";
       return `<div style="margin-top:8px"><div class="fl">Katastrální mapa</div>
         <div style="position:relative;margin-top:3px;border:1px solid #ccc;border-radius:3px;overflow:hidden;width:100%;aspect-ratio:${aspectRatio};background:#fff">
-          <img src="${report.katastr_map_url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain" alt=""/>
-          ${ar ? `<img src="${ar.dataUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%" alt=""/>` : ""}
+          <img src="${report.katastr_map_url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;transform-origin:top left" alt=""/>
+          ${ar ? `<img src="${ar.dataUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;transform-origin:top left" alt=""/>` : ""}
         </div></div>`;
     })() : ""}
     </div>
@@ -315,6 +330,61 @@ function buildHTML(
 </div>`;
 }
 
+const PAGE_WIDTH_PX = 794;
+const PAGE_HEIGHT_PX = 1122;
+
+function createPageContainer(): HTMLDivElement {
+  const page = document.createElement("div");
+  page.className = "page";
+  page.style.width = `${PAGE_WIDTH_PX}px`;
+  page.style.height = `${PAGE_HEIGHT_PX}px`;
+  return page;
+}
+
+function paginateFlow(flow: HTMLElement, measureHost: HTMLElement): HTMLDivElement[] {
+  const sourceBlocks = Array.from(flow.children) as HTMLElement[];
+  const pages: HTMLDivElement[] = [];
+  let currentPage = createPageContainer();
+  measureHost.appendChild(currentPage);
+
+  for (const sourceBlock of sourceBlocks) {
+    const block = sourceBlock.cloneNode(true) as HTMLElement;
+    currentPage.appendChild(block);
+
+    if (currentPage.scrollHeight <= PAGE_HEIGHT_PX + 1) continue;
+
+    currentPage.removeChild(block);
+
+    // If this block does not fit an empty page, keep it alone to avoid data loss.
+    if (currentPage.childElementCount === 0) {
+      currentPage.appendChild(block);
+      pages.push(currentPage);
+      currentPage = createPageContainer();
+      measureHost.appendChild(currentPage);
+      continue;
+    }
+
+    pages.push(currentPage);
+    currentPage = createPageContainer();
+    measureHost.appendChild(currentPage);
+    currentPage.appendChild(block);
+
+    if (currentPage.scrollHeight > PAGE_HEIGHT_PX + 1) {
+      pages.push(currentPage);
+      currentPage = createPageContainer();
+      measureHost.appendChild(currentPage);
+    }
+  }
+
+  if (currentPage.childElementCount > 0) {
+    pages.push(currentPage);
+  } else if (currentPage.parentElement === measureHost) {
+    measureHost.removeChild(currentPage);
+  }
+
+  return pages;
+}
+
 export async function generatePDF(
   report: Report,
   instruments: Instrument[],
@@ -333,38 +403,45 @@ export async function generatePDF(
   wrapper.innerHTML = html;
   document.body.appendChild(wrapper);
 
-  const element = wrapper.querySelector(".page") as HTMLElement;
+  const flow = wrapper.querySelector(".doc-flow") as HTMLElement | null;
+  if (!flow) {
+    document.body.removeChild(wrapper);
+    throw new Error("PDF template root not found");
+  }
+
+  const renderHost = document.createElement("div");
+  renderHost.style.cssText = "position:fixed;left:-10000px;top:0;";
+  document.body.appendChild(renderHost);
+
+  const pages = paginateFlow(flow, renderHost);
 
   try {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: "#ffffff",
-    });
-
-    const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfWidth = 210;
     const pdfHeight = 297;
-    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i], {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      if (i > 0) {
+        pdf.addPage();
+      }
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    }
 
-    pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-    heightLeft -= pdfHeight;
-
-    while (heightLeft > 0) {
-      position -= pdfHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
+    if (pages.length === 0) {
+      pdf.text("PDF template is empty", 20, 20);
     }
 
     const name = (report.ev_cislo_zpravy || "navrh").replace(/[/\\]/g, "-");
     pdf.save(`revizni-zprava-lps-${name}.pdf`);
   } finally {
+    document.body.removeChild(renderHost);
     document.body.removeChild(wrapper);
   }
 }
