@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,8 +15,17 @@ interface FormStepperProps {
 }
 
 export default function FormStepper({ steps, currentStep, onStepClick }: FormStepperProps) {
+  const stepButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    const el = stepButtonRefs.current[currentStep];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [currentStep]);
+
   return (
-    <nav className="w-full overflow-x-auto pb-2">
+    <nav className="w-full overflow-x-auto pb-2 scroll-smooth" aria-label="Kroky formuláře">
       <ol className="flex items-center gap-1 min-w-max">
         {steps.map((step, idx) => {
           const isCompleted = idx < currentStep;
@@ -24,6 +34,9 @@ export default function FormStepper({ steps, currentStep, onStepClick }: FormSte
             <li key={step.id} className="flex items-center">
               <button
                 type="button"
+                ref={el => {
+                  stepButtonRefs.current[idx] = el;
+                }}
                 onClick={() => onStepClick(idx)}
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap",

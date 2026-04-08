@@ -20,6 +20,17 @@ import FormStepper, { type Step } from "@/components/FormStepper";
 import InspectionChecklist, { CHECKLIST_E11, CHECKLIST_E12 } from "@/components/InspectionChecklist";
 import { generatePDF } from "@/lib/pdfExport";
 import { useAuth } from "@/hooks/useAuth";
+import { usePinnedDefaultsQuery } from "@/hooks/usePinnedDefaults";
+import {
+  useSavedCompaniesQuery,
+  useSavedInstrumentsQuery,
+  useTechTemplatesQuery,
+  useCommonDefectsQuery,
+  useUpsertCompany,
+} from "@/hooks/useLibrary";
+import CompanyCombobox from "@/components/CompanyCombobox";
+import { mergePinnedDefaultsIntoForm } from "@/lib/formSettings";
+import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Report = Tables<"inspection_reports">;
@@ -51,6 +62,18 @@ const EMPTY_MEASUREMENT: Record<string, string | number | null> = {
 const EMPTY_SPD: Record<string, string | number | null> = {
   vyrobce: null, typove_oznaceni: null, misto_instalace: null, sort_order: 0,
 };
+
+function instrumentRowFromTemplate(t: Tables<"saved_instrument_templates">): Record<string, string | number | null> {
+  return {
+    nazev_pristroje: t.nazev_pristroje,
+    typ_pristroje: t.typ_pristroje,
+    vyrobni_cislo: t.vyrobni_cislo,
+    cislo_kalibracniho_listu: t.cislo_kalibracniho_listu,
+    datum_kalibrace: t.datum_kalibrace,
+    firma_kalibrace: t.firma_kalibrace,
+    sort_order: 0,
+  };
+}
 
 const TYP_OBJEKTU_OPTIONS = [
   "pro bytové účely",
@@ -89,19 +112,8 @@ function FField({ label, children, full }: { label: string; children: React.Reac
   );
 }
 
-export default function ReportForm() {
-  const { id } = useParams<{ id: string }>();
-  const isEdit = !!id;
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [loading, setLoading] = useState(isEdit);
-  const [currentStep, setCurrentStep] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [form, setForm] = useState<Partial<Report>>({
+function getDefaultReportForm(): Partial<Report> {
+  return {
     typ_revize: "pravidelná",
     trida_lps: "III",
     rozsah_vnejsi_ochrana: false,
@@ -118,7 +130,42 @@ export default function ReportForm() {
     seznam_priloh: [],
     inspection_checklist: {},
     predlozene_doklady: {},
-  });
+  };
+}
+
+export default function ReportForm() {
+  const { id } = useParams<{ id: string }>();
+  const isEdit = !!id;
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
+  const [currentStep, setCurrentStep] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [form, setForm] = useState<Partial<Report>>(getDefaultReportForm);
+  const pinnedMergedRef = useRef(false);
+  const libCompanyMergedRef = useRef(false);
+  const libTechMergedRef = useRef(false);
+  const libInstMergedRef = useRef(false);
+  const libDefectMergedRef = useRef(false);
+  const { data: pinnedDefaults } = usePinnedDefaultsQuery();
+  const savedCompaniesQuery = useSavedCompaniesQuery();
+  const savedCompanies = savedCompaniesQuery.data ?? [];
+  const techTemplatesQuery = useTechTemplatesQuery();
+  const techTemplates = techTemplatesQuery.data ?? [];
+  const instrumentTemplatesQuery = useSavedInstrumentsQuery();
+  const instrumentTemplates = instrumentTemplatesQuery.data ?? [];
+  const commonDefectsQuery = useCommonDefectsQuery();
+  const commonDefects = commonDefectsQuery.data ?? [];
+  const upsertCompany = useUpsertCompany();
+
+  const [libraryCompanyId, setLibraryCompanyId] = useState<string | null>(null);
+  const [libraryTechId, setLibraryTechId] = useState<string | null>(null);
+  const [libraryInstrumentId, setLibraryInstrumentId] = useState<string | null>(null);
+  const [libraryDefectId, setLibraryDefectId] = useState<string | null>(null);
 
   const [instruments, setInstruments] = useState<Record<string, string | number | null>[]>([]);
   const [measurements, setMeasurements] = useState<Record<string, string | number | null>[]>([]);
@@ -127,6 +174,53 @@ export default function ReportForm() {
   useEffect(() => {
     if (isEdit && !authLoading && !user) navigate("/login");
   }, [isEdit, authLoading, user, navigate]);
+
+  useEffect(() => {
+    if (isEdit || !user || pinnedDefaults === undefined || pinnedMergedRef.current) return;
+    pinnedMergedRef.current = true;
+    setForm(f => mergePinnedDefaultsIntoForm({ ...f }, pinnedDefaults));
+  }, [isEdit, user, pinnedDefaults]);
+
+  useEffect(() => {
+    if (isEdit || !user || !savedCompaniesQuery.isSuccess || libCompanyMergedRef.current) return;
+    libCompanyMergedRef.current = true;
+    if (savedCompanies.length === 0) return;
+    const c = savedCompanies[0];
+    setForm(f => ({
+      ...f,
+      montazni_firma_nazev: c.nazev,
+      montazni_firma_ico: c.ico ?? "",
+      montazni_firma_ev_opravneni: c.ev_opravneni ?? "",
+    }));
+    if (savedCompanies.length > 1) setLibraryCompanyId(c.id);
+  }, [isEdit, user, savedCompaniesQuery.isSuccess, savedCompanies]);
+
+  useEffect(() => {
+    if (isEdit || !user || !techTemplatesQuery.isSuccess || libTechMergedRef.current) return;
+    libTechMergedRef.current = true;
+    if (techTemplates.length === 0) return;
+    const t = techTemplates[0];
+    setForm(f => ({ ...f, technicky_popis: t.body }));
+    if (techTemplates.length > 1) setLibraryTechId(t.id);
+  }, [isEdit, user, techTemplatesQuery.isSuccess, techTemplates]);
+
+  useEffect(() => {
+    if (isEdit || !user || !instrumentTemplatesQuery.isSuccess || libInstMergedRef.current) return;
+    libInstMergedRef.current = true;
+    if (instrumentTemplates.length === 0) return;
+    const t = instrumentTemplates[0];
+    setInstruments([instrumentRowFromTemplate(t)]);
+    if (instrumentTemplates.length > 1) setLibraryInstrumentId(t.id);
+  }, [isEdit, user, instrumentTemplatesQuery.isSuccess, instrumentTemplates]);
+
+  useEffect(() => {
+    if (isEdit || !user || !commonDefectsQuery.isSuccess || libDefectMergedRef.current) return;
+    libDefectMergedRef.current = true;
+    if (commonDefects.length === 0) return;
+    const d = commonDefects[0];
+    setForm(f => ({ ...f, zjistene_zavady: d.label_cs }));
+    if (commonDefects.length > 1) setLibraryDefectId(d.id);
+  }, [isEdit, user, commonDefectsQuery.isSuccess, commonDefects]);
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -152,6 +246,43 @@ export default function ReportForm() {
   }, [id, isEdit]);
 
   const set = (key: keyof Report, val: unknown) => setForm(f => ({ ...f, [key]: val }));
+
+  const applyLibraryCompany = (id: string) => {
+    const c = savedCompanies.find(x => x.id === id);
+    if (!c) return;
+    setLibraryCompanyId(id);
+    setForm(f => ({
+      ...f,
+      montazni_firma_nazev: c.nazev,
+      montazni_firma_ico: c.ico ?? "",
+      montazni_firma_ev_opravneni: c.ev_opravneni ?? "",
+    }));
+  };
+
+  const applyLibraryTechTemplate = (id: string) => {
+    const t = techTemplates.find(x => x.id === id);
+    if (!t) return;
+    setLibraryTechId(id);
+    set("technicky_popis", t.body);
+  };
+
+  const applyLibraryInstrumentTemplate = (id: string) => {
+    const t = instrumentTemplates.find(x => x.id === id);
+    if (!t) return;
+    setLibraryInstrumentId(id);
+    setInstruments(prev => {
+      const row = instrumentRowFromTemplate(t);
+      if (prev.length === 0) return [row];
+      return [row, ...prev.slice(1)];
+    });
+  };
+
+  const applyLibraryDefect = (id: string) => {
+    const d = commonDefects.find(x => x.id === id);
+    if (!d) return;
+    setLibraryDefectId(id);
+    set("zjistene_zavady", d.label_cs);
+  };
 
   const setChecklist = (vals: Record<string, boolean>) => set("inspection_checklist", vals);
   const checklist = (form.inspection_checklist || {}) as Record<string, boolean>;
@@ -245,6 +376,48 @@ export default function ReportForm() {
   const goNext = () => setCurrentStep(s => Math.min(s + 1, STEPS.length - 1));
   const goPrev = () => setCurrentStep(s => Math.max(s - 1, 0));
 
+  const skipInitialStepScroll = useRef(true);
+  useEffect(() => {
+    if (skipInitialStepScroll.current) {
+      skipInitialStepScroll.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
+
+  const handleSaveCompanyToSettings = () => {
+    if (!user) {
+      toast({
+        title: "Přihlášení vyžadováno",
+        description: "Pro uložení firmy do knihovny se přihlaste.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const nazev = (form.montazni_firma_nazev || "").trim();
+    if (!nazev) {
+      toast({
+        title: "Chybí název",
+        description: "Vyplňte název montážní firmy.",
+        variant: "destructive",
+      });
+      return;
+    }
+    upsertCompany.mutate(
+      {
+        nazev,
+        ico: (form.montazni_firma_ico || "").trim(),
+        ev_opravneni: (form.montazni_firma_ev_opravneni || "").trim(),
+      },
+      {
+        onSuccess: () =>
+          toast({ title: "Uloženo", description: "Firma byla přidána do společné knihovny." }),
+        onError: () =>
+          toast({ title: "Chyba", description: "Nepodařilo se uložit firmu.", variant: "destructive" }),
+      },
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -252,6 +425,32 @@ export default function ReportForm() {
       </div>
     );
   }
+
+  const stepNavigation = (placement: "top" | "bottom") => (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-2",
+        placement === "top" ? "border-b border-border pb-4 -mt-1" : "pt-4 pb-8",
+      )}
+    >
+      <Button variant="outline" onClick={goPrev} disabled={currentStep === 0}>
+        <ChevronLeft className="w-4 h-4 mr-1" /> Předchozí
+      </Button>
+      <span className="text-sm text-muted-foreground shrink-0">
+        {currentStep + 1} / {STEPS.length}
+      </span>
+      {currentStep < STEPS.length - 1 ? (
+        <Button onClick={goNext}>
+          Další <ChevronRight className="w-4 h-4 ml-1" />
+        </Button>
+      ) : (
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+          {isEdit ? "Uložit změny" : "Uložit zprávu"}
+        </Button>
+      )}
+    </div>
+  );
 
   const renderStep = () => {
     switch (STEPS[currentStep].id) {
@@ -351,8 +550,55 @@ export default function ReportForm() {
             <FField label="Provozovatel objektu">
               <Input value={form.provozovatel_objektu || ""} onChange={e => set("provozovatel_objektu", e.target.value)} />
             </FField>
-            <FField label="Montážní firma – název">
-              <Input value={form.montazni_firma_nazev || ""} onChange={e => set("montazni_firma_nazev", e.target.value)} />
+            {savedCompanies.length > 1 && (
+              <FField label="Šablona montážní firmy z knihovny" full>
+                <Select
+                  value={libraryCompanyId ?? savedCompanies[0]?.id ?? ""}
+                  onValueChange={applyLibraryCompany}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyberte záznam z knihovny…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedCompanies.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nazev}
+                        {c.creator_display ? ` (${c.creator_display})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FField>
+            )}
+            <FField label="Montážní firma – název" full>
+              <CompanyCombobox
+                value={form.montazni_firma_nazev || ""}
+                onValueChange={v => set("montazni_firma_nazev", v)}
+                companies={savedCompanies.map(c => ({
+                  id: c.id,
+                  nazev: c.nazev,
+                  ico: c.ico,
+                  ev_opravneni: c.ev_opravneni,
+                }))}
+                onPickCompany={c => {
+                  set("montazni_firma_nazev", c.nazev);
+                  set("montazni_firma_ico", c.ico);
+                  set("montazni_firma_ev_opravneni", c.ev_opravneni);
+                }}
+              />
+              {user ? (
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveCompanyToSettings}
+                    disabled={upsertCompany.isPending}
+                  >
+                    Uložit firmu do nastavení
+                  </Button>
+                </div>
+              ) : null}
             </FField>
             <FField label="Montážní firma – IČ">
               <Input value={form.montazni_firma_ico || ""} onChange={e => set("montazni_firma_ico", e.target.value)} />
@@ -413,7 +659,13 @@ export default function ReportForm() {
 
           <MultiSelectCheckbox
             label="Typ jímací soustavy"
-            options={["tyče", "závěsná lana", "vodiče mřížové soustavy"]}
+            options={[
+              "tyče",
+              "závěsná lana",
+              "vodiče mřížové soustavy",
+              "izolovaná jímací soustava",
+              "aktivní jímací soustava",
+            ]}
             selected={form.typ_jimaci_soustavy || []}
             onChange={v => set("typ_jimaci_soustavy", v)}
           />
@@ -492,18 +744,45 @@ export default function ReportForm() {
           />
         </SectionCard>
         <SectionCard title="Soupis použitých měřicích přístrojů">
-          <RepeatableTable
-            columns={[
-              { key: "nazev_pristroje", label: "Typ a název přístroje" },
-              { key: "vyrobni_cislo", label: "Výrobní (evidenční) číslo" },
-              { key: "cislo_kalibracniho_listu", label: "Číslo kalibračního listu" },
-              { key: "datum_kalibrace", label: "Datum kalibrace" },
-              { key: "firma_kalibrace", label: "Firma provádějící kalibraci" },
-            ]}
-            rows={instruments}
-            onChange={setInstruments}
-            emptyRow={EMPTY_INSTRUMENT}
-          />
+          <div className="space-y-4">
+            {instrumentTemplates.length > 1 && (
+              <FField label="Šablona měřicího přístroje z knihovny" full>
+                <Select
+                  value={libraryInstrumentId ?? instrumentTemplates[0]?.id ?? ""}
+                  onValueChange={applyLibraryInstrumentTemplate}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyberte šablonu…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instrumentTemplates.map(t => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {(t.nazev_pristroje || t.typ_pristroje || "Přístroj").trim()}
+                        {t.creator_display ? ` (${t.creator_display})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FField>
+            )}
+            {instrumentTemplates.length === 1 && (
+              <p className="text-sm text-muted-foreground">
+                První řádek předvyplněn šablonou z knihovny (údaje můžete upravit).
+              </p>
+            )}
+            <RepeatableTable
+              columns={[
+                { key: "nazev_pristroje", label: "Typ a název přístroje" },
+                { key: "vyrobni_cislo", label: "Výrobní (evidenční) číslo" },
+                { key: "cislo_kalibracniho_listu", label: "Číslo kalibračního listu" },
+                { key: "datum_kalibrace", label: "Datum kalibrace" },
+                { key: "firma_kalibrace", label: "Firma provádějící kalibraci" },
+              ]}
+              rows={instruments}
+              onChange={setInstruments}
+              emptyRow={EMPTY_INSTRUMENT}
+            />
+          </div>
         </SectionCard>
       </div>
     );
@@ -602,9 +881,36 @@ export default function ReportForm() {
   function renderPopis() {
     return (
       <SectionCard title="D. Technický popis revidovaného zařízení">
-        <FField label="Technický popis" full>
-          <Textarea rows={8} value={form.technicky_popis || ""} onChange={e => set("technicky_popis", e.target.value)} />
-        </FField>
+        <div className="space-y-4">
+          {techTemplates.length > 1 && (
+            <FField label="Šablona technického popisu z knihovny" full>
+              <Select
+                value={libraryTechId ?? techTemplates[0]?.id ?? ""}
+                onValueChange={applyLibraryTechTemplate}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Vyberte šablonu…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {techTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                      {t.creator_display ? ` (${t.creator_display})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FField>
+          )}
+          {techTemplates.length === 1 && (
+            <p className="text-sm text-muted-foreground">
+              Předvyplněno šablonou „{techTemplates[0].name}“ z knihovny.
+            </p>
+          )}
+          <FField label="Technický popis" full>
+            <Textarea rows={8} value={form.technicky_popis || ""} onChange={e => set("technicky_popis", e.target.value)} />
+          </FField>
+        </div>
       </SectionCard>
     );
   }
@@ -667,9 +973,36 @@ export default function ReportForm() {
     return (
       <div className="space-y-6">
         <SectionCard title="F. Soupis zjištěných závad">
-          <FField label="Zjištěné závady (přesně specifikovat s odkazem na normu)" full>
-            <Textarea rows={5} value={form.zjistene_zavady || ""} onChange={e => set("zjistene_zavady", e.target.value)} />
-          </FField>
+          <div className="space-y-4">
+            {commonDefects.length > 1 && (
+              <FField label="Šablona závady z knihovny" full>
+                <Select
+                  value={libraryDefectId ?? commonDefects[0]?.id ?? ""}
+                  onValueChange={applyLibraryDefect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyberte záznam…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commonDefects.map(d => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.label_cs}
+                        {d.creator_display ? ` (${d.creator_display})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FField>
+            )}
+            {commonDefects.length === 1 && (
+              <p className="text-sm text-muted-foreground">
+                Předvyplněno textem z knihovny závad (můžete upravit).
+              </p>
+            )}
+            <FField label="Zjištěné závady (přesně specifikovat s odkazem na normu)" full>
+              <Textarea rows={5} value={form.zjistene_zavady || ""} onChange={e => set("zjistene_zavady", e.target.value)} />
+            </FField>
+          </div>
         </SectionCard>
 
         <SectionCard title="G. Závěr a vyhodnocení">
@@ -804,30 +1137,11 @@ export default function ReportForm() {
 
         <FormStepper steps={STEPS} currentStep={currentStep} onStepClick={setCurrentStep} />
 
+        {stepNavigation("top")}
+
         {renderStep()}
 
-        <div className="flex items-center justify-between pt-4 pb-8">
-          <Button
-            variant="outline"
-            onClick={goPrev}
-            disabled={currentStep === 0}
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" /> Předchozí
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {currentStep + 1} / {STEPS.length}
-          </span>
-          {currentStep < STEPS.length - 1 ? (
-            <Button onClick={goNext}>
-              Další <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-              {isEdit ? "Uložit změny" : "Uložit zprávu"}
-            </Button>
-          )}
-        </div>
+        {stepNavigation("bottom")}
       </div>
     </div>
   );

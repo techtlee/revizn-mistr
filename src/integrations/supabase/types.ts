@@ -216,6 +216,156 @@ export type Database = {
         }
         Relationships: []
       }
+      user_form_settings: {
+        Row: {
+          user_id: string
+          pinned_defaults: Json
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          pinned_defaults?: Json
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          pinned_defaults?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      saved_companies: {
+        Row: {
+          id: string
+          nazev: string
+          ico: string
+          ev_opravneni: string
+          created_by: string
+          creator_display: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nazev?: string
+          ico?: string
+          ev_opravneni?: string
+          created_by: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nazev?: string
+          ico?: string
+          ev_opravneni?: string
+          created_by?: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      saved_instrument_templates: {
+        Row: {
+          id: string
+          nazev_pristroje: string | null
+          typ_pristroje: string | null
+          vyrobni_cislo: string | null
+          cislo_kalibracniho_listu: string | null
+          datum_kalibrace: string | null
+          firma_kalibrace: string | null
+          created_by: string
+          creator_display: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nazev_pristroje?: string | null
+          typ_pristroje?: string | null
+          vyrobni_cislo?: string | null
+          cislo_kalibracniho_listu?: string | null
+          datum_kalibrace?: string | null
+          firma_kalibrace?: string | null
+          created_by: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nazev_pristroje?: string | null
+          typ_pristroje?: string | null
+          vyrobni_cislo?: string | null
+          cislo_kalibracniho_listu?: string | null
+          datum_kalibrace?: string | null
+          firma_kalibrace?: string | null
+          created_by?: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      technical_description_templates: {
+        Row: {
+          id: string
+          name: string
+          body: string
+          created_by: string
+          creator_display: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name?: string
+          body?: string
+          created_by: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          body?: string
+          created_by?: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      common_defects: {
+        Row: {
+          id: string
+          label_cs: string
+          created_by: string
+          creator_display: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          label_cs?: string
+          created_by: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          label_cs?: string
+          created_by?: string
+          creator_display?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_spd_devices: {
         Row: {
           id: string
