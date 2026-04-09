@@ -27,6 +27,8 @@ import {
   LogOut,
   Library,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   ListTree,
   SlidersHorizontal,
@@ -80,6 +82,27 @@ const URGENCY_CONFIG: Record<UrgencyStatus, { label: string; className: string }
   upcoming: { label: "Nadcházející", className: "bg-yellow-400 hover:bg-yellow-400/90 text-black border-0" },
   ok: { label: "V pořádku", className: "bg-emerald-600 hover:bg-emerald-600/90 text-white border-0" },
 };
+
+const PAGE_SIZE = 10;
+
+function PaginationControls({ page, totalPages, onPageChange }: { page: number; totalPages: number; onPageChange: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t">
+      <span className="text-sm text-muted-foreground">
+        Strana {page + 1} z {totalPages}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button variant="outline" size="sm" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => onPageChange(page + 1)}>
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 interface DeadlineRow {
   id: string;
@@ -135,6 +158,7 @@ export default function Index() {
   const [filterDatumDo, setFilterDatumDo] = useState("");
   const [filterPosudek, setFilterPosudek] = useState<string>("all");
   const [filterDruh, setFilterDruh] = useState<string>("all");
+  const [reportPage, setReportPage] = useState(0);
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -247,6 +271,20 @@ export default function Index() {
   const overdueOfficialCount = officialDeadlines.filter(d => d.urgency === "overdue").length;
   const overdueVisualCount = visualDeadlines.filter(d => d.urgency === "overdue").length;
 
+  const officialByUrgency = useMemo(() => ({
+    overdue: officialDeadlines.filter(d => d.urgency === "overdue").length,
+    urgent: officialDeadlines.filter(d => d.urgency === "urgent").length,
+    upcoming: officialDeadlines.filter(d => d.urgency === "upcoming").length,
+    ok: officialDeadlines.filter(d => d.urgency === "ok").length,
+  }), [officialDeadlines]);
+
+  const visualByUrgency = useMemo(() => ({
+    overdue: visualDeadlines.filter(d => d.urgency === "overdue").length,
+    urgent: visualDeadlines.filter(d => d.urgency === "urgent").length,
+    upcoming: visualDeadlines.filter(d => d.urgency === "upcoming").length,
+    ok: visualDeadlines.filter(d => d.urgency === "ok").length,
+  }), [visualDeadlines]);
+
   const upcomingDeadlineChartData = useMemo(() => {
     const now = new Date();
     const result: { month: string; radna: number; vizualni: number }[] = [];
@@ -355,57 +393,71 @@ export default function Index() {
           <p className="text-muted-foreground mt-1">Hromosvody Vitmajer – správa revizí dle ČSN EN 62305</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 mb-8">
           <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-primary">{reports?.length ?? 0}</div>
-              <p className="text-sm text-muted-foreground mt-1">Celkem zpráv</p>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Clock className="w-4 h-4" />
+                Nadcházející termíny revizí
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  radna: { label: "Řádná revize", color: "hsl(var(--primary))" },
+                  vizualni: { label: "Vizuální revize", color: "hsl(25 95% 53%)" },
+                }}
+                className="h-[320px] w-full"
+              >
+                <BarChart data={upcomingDeadlineChartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="radna" name="Řádná revize" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="vizualni" name="Vizuální revize" fill="hsl(25 95% 53%)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <span className="text-2xl font-bold text-emerald-600">
-                  {reports?.filter(r => r.celkovy_posudek === "v souladu").length ?? 0}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">V souladu</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <XCircle className="w-5 h-5 text-destructive" />
-                <span className="text-2xl font-bold text-destructive">
-                  {reports?.filter(r => r.celkovy_posudek === "není v souladu").length ?? 0}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Není v souladu</p>
-            </CardContent>
-          </Card>
-          <Card className={overdueOfficialCount > 0 ? "border-red-300 dark:border-red-800" : ""}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className={`w-5 h-5 ${overdueOfficialCount > 0 ? "text-red-600" : "text-emerald-600"}`} />
-                <span className={`text-2xl font-bold ${overdueOfficialCount > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                  {overdueOfficialCount}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Řádné po termínu</p>
-            </CardContent>
-          </Card>
-          <Card className={overdueVisualCount > 0 ? "border-red-300 dark:border-red-800" : ""}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Eye className={`w-5 h-5 ${overdueVisualCount > 0 ? "text-red-600" : "text-emerald-600"}`} />
-                <span className={`text-2xl font-bold ${overdueVisualCount > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                  {overdueVisualCount}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Vizuální po termínu</p>
-            </CardContent>
-          </Card>
+
+          <div className="grid grid-rows-2 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" />
+                  <span className="text-2xl font-bold text-primary">{officialDeadlines.length}</span>
+                  <span className="text-sm text-muted-foreground">Řádné revize</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 mt-2">
+                  {(Object.keys(URGENCY_CONFIG) as UrgencyStatus[]).map((s) => (
+                    <div key={s} className="flex items-center gap-1">
+                      <span className={`inline-block w-2 h-2 rounded-full ${URGENCY_CONFIG[s].className.split(" ")[0]}`} />
+                      <span className="text-sm font-semibold">{officialByUrgency[s]}</span>
+                      <span className="text-xs text-muted-foreground">{URGENCY_CONFIG[s].label}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-orange-500" />
+                  <span className="text-2xl font-bold text-orange-500">{visualDeadlines.length}</span>
+                  <span className="text-sm text-muted-foreground">Vizuální revize</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 mt-2">
+                  {(Object.keys(URGENCY_CONFIG) as UrgencyStatus[]).map((s) => (
+                    <div key={s} className="flex items-center gap-1">
+                      <span className={`inline-block w-2 h-2 rounded-full ${URGENCY_CONFIG[s].className.split(" ")[0]}`} />
+                      <span className="text-sm font-semibold">{visualByUrgency[s]}</span>
+                      <span className="text-xs text-muted-foreground">{URGENCY_CONFIG[s].label}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <Tabs defaultValue="radna" className="w-full mb-8">
@@ -452,7 +504,36 @@ export default function Index() {
         </Tabs>
 
         {reports && reports.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 mb-8">
+            <Card className="flex flex-col justify-center lg:min-w-[220px]">
+              <CardContent className="pt-6">
+                <div className="text-4xl font-bold text-primary">{reports?.length ?? 0}</div>
+                <p className="text-sm text-muted-foreground mt-1 mb-3">Celkem zpráv</p>
+                <div className="flex flex-col gap-2 border-t pt-3">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-lg font-semibold text-emerald-600">
+                      {reports?.filter(r => r.celkovy_posudek === "v souladu").length ?? 0}
+                    </span>
+                    <span className="text-xs text-muted-foreground">v souladu</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <XCircle className="w-4 h-4 text-destructive" />
+                    <span className="text-lg font-semibold text-destructive">
+                      {reports?.filter(r => r.celkovy_posudek === "není v souladu").length ?? 0}
+                    </span>
+                    <span className="text-xs text-muted-foreground">není v souladu</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ClipboardList className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-lg font-semibold text-muted-foreground">
+                      {reports?.filter(r => !r.celkovy_posudek || (r.celkovy_posudek !== "v souladu" && r.celkovy_posudek !== "není v souladu")).length ?? 0}
+                    </span>
+                    <span className="text-xs text-muted-foreground">bez posudku</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -480,31 +561,6 @@ export default function Index() {
                 </ChartContainer>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                  <Clock className="w-4 h-4" />
-                  Nadcházející termíny revizí
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer
-                  config={{
-                    radna: { label: "Řádná revize", color: "hsl(var(--primary))" },
-                    vizualni: { label: "Vizuální revize", color: "hsl(25 95% 53%)" },
-                  }}
-                  className="h-[260px] w-full"
-                >
-                  <BarChart data={upcomingDeadlineChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="radna" name="Řádná revize" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="vizualni" name="Vizuální revize" fill="hsl(25 95% 53%)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
           </div>
         )}
 
@@ -514,22 +570,22 @@ export default function Index() {
             <Input
               placeholder="Hledat dle čísla zprávy, objednavatele nebo adresy..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setReportPage(0); }}
               className="pl-10 h-11"
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Datum od</Label>
-              <Input type="date" value={filterDatumOd} onChange={(e) => setFilterDatumOd(e.target.value)} className="h-9 w-[140px]" />
+              <Input type="date" value={filterDatumOd} onChange={(e) => { setFilterDatumOd(e.target.value); setReportPage(0); }} className="h-9 w-[140px]" />
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Datum do</Label>
-              <Input type="date" value={filterDatumDo} onChange={(e) => setFilterDatumDo(e.target.value)} className="h-9 w-[140px]" />
+              <Input type="date" value={filterDatumDo} onChange={(e) => { setFilterDatumDo(e.target.value); setReportPage(0); }} className="h-9 w-[140px]" />
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Posudek</Label>
-              <Select value={filterPosudek} onValueChange={setFilterPosudek}>
+              <Select value={filterPosudek} onValueChange={(v) => { setFilterPosudek(v); setReportPage(0); }}>
                 <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Vše" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Vše</SelectItem>
@@ -541,7 +597,7 @@ export default function Index() {
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground shrink-0">Druh</Label>
-              <Select value={filterDruh} onValueChange={setFilterDruh}>
+              <Select value={filterDruh} onValueChange={(v) => { setFilterDruh(v); setReportPage(0); }}>
                 <SelectTrigger className="h-9 w-[140px]"><SelectValue placeholder="Vše" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Vše</SelectItem>
@@ -594,7 +650,11 @@ export default function Index() {
                   </Button>
                 )}
               </div>
-            ) : (
+            ) : (() => {
+              const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+              const safeReportPage = Math.min(reportPage, totalPages - 1);
+              const paged = filtered.slice(safeReportPage * PAGE_SIZE, (safeReportPage + 1) * PAGE_SIZE);
+              return <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -608,7 +668,7 @@ export default function Index() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((report) => (
+                  {paged.map((report) => (
                     <TableRow key={report.id}>
                       <TableCell>
                         <span className="font-mono font-semibold text-primary">
@@ -660,7 +720,9 @@ export default function Index() {
                   ))}
                 </TableBody>
               </Table>
-            )}
+              <PaginationControls page={safeReportPage} totalPages={totalPages} onPageChange={setReportPage} />
+              </>;
+            })()}
           </CardContent>
         </Card>
       </div>
@@ -681,11 +743,33 @@ function DeadlineView({
   onExport: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
+  const [page, setPage] = useState(0);
+  const [activeFilters, setActiveFilters] = useState<Set<UrgencyStatus>>(
+    new Set(["overdue", "urgent", "upcoming", "ok"])
+  );
   const title = type === "official" ? "Termíny řádných revizí" : "Termíny vizuálních revizí";
   const description = type === "official"
     ? "Třída I, II: každé 2 roky | Třída III, IV: každé 4 roky"
     : "Všechny třídy: každý rok";
   const Icon = type === "official" ? Shield : Eye;
+
+  const filteredRows = rows.filter((r) => activeFilters.has(r.urgency));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const paged = filteredRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
+  const toggleFilter = (status: UrgencyStatus) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) {
+        if (next.size > 1) next.delete(status);
+      } else {
+        next.add(status);
+      }
+      setPage(0);
+      return next;
+    });
+  };
 
   return (
     <Card>
@@ -694,7 +778,30 @@ function DeadlineView({
           <Icon className="w-5 h-5" />
           {title}
         </CardTitle>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          {(Object.keys(URGENCY_CONFIG) as UrgencyStatus[]).map((status) => {
+            const cfg = URGENCY_CONFIG[status];
+            const count = rows.filter((r) => r.urgency === status).length;
+            const isActive = activeFilters.has(status);
+            return (
+              <button
+                key={status}
+                onClick={() => toggleFilter(status)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                  isActive ? cfg.className : "bg-muted text-muted-foreground opacity-50"
+                }`}
+              >
+                {cfg.label}
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
+                  isActive ? "bg-white/20" : "bg-foreground/10"
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">{description}</p>
       </CardHeader>
       <CardContent className="p-0">
         {isLoading ? (
@@ -705,7 +812,11 @@ function DeadlineView({
             <p className="text-muted-foreground font-medium">Žádné revize k zobrazení</p>
             <p className="text-sm text-muted-foreground mt-1">Revize se zde zobrazí po zadání data zahájení a třídy LPS.</p>
           </div>
-        ) : (
+        ) : !filteredRows.length ? (
+          <div className="p-8 text-center text-muted-foreground">
+            Žádné revize pro zvolený filtr
+          </div>
+        ) : (<>
           <Table>
             <TableHeader>
               <TableRow>
@@ -720,7 +831,7 @@ function DeadlineView({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => (
+              {paged.map((row) => (
                 <TableRow key={row.id} className={row.urgency === "overdue" ? "bg-red-50/50 dark:bg-red-950/20" : ""}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -773,7 +884,8 @@ function DeadlineView({
               ))}
             </TableBody>
           </Table>
-        )}
+          <PaginationControls page={safePage} totalPages={totalPages} onPageChange={setPage} />
+        </>)}
       </CardContent>
     </Card>
   );
