@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ReportForm from "./pages/ReportForm";
 import NotFound from "./pages/NotFound";
+import Seed from "./pages/Seed";
 import SettingsLayout from "./pages/settings/SettingsLayout";
 import SettingsHome from "./pages/settings/SettingsHome";
 import CompanyListPage from "./pages/settings/companies/CompanyListPage";
@@ -76,6 +77,7 @@ const App = () => (
               </Route>
               <Route path="/report/new" element={<RequireAuth><ReportForm /></RequireAuth>} />
               <Route path="/report/:id/edit" element={<RequireAuth><ReportForm /></RequireAuth>} />
+              <Route path="/seed" element={<RequireAuth><Seed /></RequireAuth>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
