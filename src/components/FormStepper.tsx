@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export interface Step {
   id: string;
@@ -25,22 +26,23 @@ export default function FormStepper({ steps, currentStep, onStepClick }: FormSte
   }, [currentStep]);
 
   return (
-    <nav className="w-full overflow-x-auto pb-2 scroll-smooth" aria-label="Kroky formuláře">
+    <nav className="w-full overflow-x-auto pb-4 scroll-smooth" aria-label="Kroky formuláře">
       <ol className="flex items-center gap-1 min-w-max">
         {steps.map((step, idx) => {
           const isCompleted = idx < currentStep;
           const isCurrent = idx === currentStep;
           return (
             <li key={step.id} className="flex items-center">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 ref={el => {
                   stepButtonRefs.current[idx] = el;
                 }}
                 onClick={() => onStepClick(idx)}
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap",
-                  isCurrent && "bg-primary text-primary-foreground shadow-sm",
+                  "flex items-center gap-1.5 px-2.5 py-1.5 h-auto rounded-lg text-xs font-medium transition-colors whitespace-nowrap",
+                  isCurrent && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground",
                   isCompleted && !isCurrent && "bg-primary/10 text-primary hover:bg-primary/20",
                   !isCompleted && !isCurrent && "text-muted-foreground hover:bg-muted"
                 )}
@@ -57,7 +59,7 @@ export default function FormStepper({ steps, currentStep, onStepClick }: FormSte
                 </span>
                 <span className="hidden lg:inline">{step.title}</span>
                 <span className="lg:hidden">{step.shortTitle || step.title}</span>
-              </button>
+              </Button>
               {idx < steps.length - 1 && (
                 <div className={cn(
                   "w-4 h-px mx-0.5",

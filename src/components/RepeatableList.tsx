@@ -1,6 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
 
 interface RepeatableListProps {
@@ -21,7 +21,7 @@ export default function RepeatableList({ label, placeholder, items, onChange }: 
 
   return (
     <div>
-      <div className="text-sm font-medium text-foreground mb-2">{label}</div>
+      <Label className="mb-2 block">{label}</Label>
       <div className="space-y-2">
         {items.map((item, i) => (
           <div key={i} className="flex gap-2">

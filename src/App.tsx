@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import WaveBackground from "@/components/WaveBackground";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
@@ -20,10 +21,31 @@ import TechTemplateFormPage from "./pages/settings/templates/TechTemplateFormPag
 import DefectListPage from "./pages/settings/defects/DefectListPage";
 import DefectFormPage from "./pages/settings/defects/DefectFormPage";
 import PinnedDefaultsPage from "./pages/settings/PinnedDefaultsPage";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 const App = () => (
+  <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <WaveBackground />
@@ -33,9 +55,9 @@ const App = () => (
         <div className="flex-1">
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/settings" element={<SettingsLayout />}>
+              <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
+              <Route path="/settings" element={<RequireAuth><SettingsLayout /></RequireAuth>}>
                 <Route index element={<SettingsHome />} />
                 <Route path="firmy" element={<CompanyListPage />} />
                 <Route path="firmy/novy" element={<CompanyFormPage />} />
@@ -52,8 +74,8 @@ const App = () => (
                 <Route path="vychozi-hodnoty" element={<PinnedDefaultsPage />} />
                 <Route path="*" element={<Navigate to="/settings" replace />} />
               </Route>
-              <Route path="/report/new" element={<ReportForm />} />
-              <Route path="/report/:id/edit" element={<ReportForm />} />
+              <Route path="/report/new" element={<RequireAuth><ReportForm /></RequireAuth>} />
+              <Route path="/report/:id/edit" element={<RequireAuth><ReportForm /></RequireAuth>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
@@ -62,6 +84,7 @@ const App = () => (
       </div>
     </TooltipProvider>
   </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

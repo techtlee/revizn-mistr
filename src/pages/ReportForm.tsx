@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1080,7 +1081,7 @@ export default function ReportForm() {
                     Odstranit
                   </Button>
                 )}
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleRazitkoUpload} />
+                <Input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleRazitkoUpload} />
               </div>
             </div>
             <FField label="Rozdělovník" full>
@@ -1108,7 +1109,7 @@ export default function ReportForm() {
         </Link>
         <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="w-4 h-4 text-[hsl(44,84%,51%)]" />
+            <Zap className="w-4 h-4 text-white" />
           </div>
           <div className="flex flex-col leading-none">
             <span className="font-bold text-sm text-foreground tracking-wide uppercase">Vitmajer</span>
@@ -1116,6 +1117,7 @@ export default function ReportForm() {
           </div>
         </Link>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <ThemeToggle />
           <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="px-2 sm:px-3">
             {exporting ? <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" /> : <Download className="w-4 h-4 sm:mr-1" />}
             <span className="hidden sm:inline">PDF</span>
