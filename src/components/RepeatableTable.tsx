@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
 
 interface Column {
@@ -32,38 +33,38 @@ export default function RepeatableTable<T extends Record<string, string | number
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
+      <Table>
+        <TableHeader>
+          <TableRow>
             {columns.map(col => (
-              <th key={col.key} className="text-left px-2 py-2 bg-muted font-semibold text-foreground border border-border text-xs">
+              <TableHead key={col.key} className="text-xs font-semibold">
                 {col.label}
-              </th>
+              </TableHead>
             ))}
-            <th className="w-10 px-2 py-2 bg-muted border border-border" />
-          </tr>
-        </thead>
-        <tbody>
+            <TableHead className="w-10" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.length === 0 && (
-            <tr>
-              <td colSpan={columns.length + 1} className="px-3 py-3 text-center text-muted-foreground text-xs border border-border">
+            <TableRow>
+              <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground text-xs">
                 Žádné záznamy
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
           {rows.map((row, i) => (
-            <tr key={i}>
+            <TableRow key={i}>
               {columns.map(col => (
-                <td key={col.key} className="px-1 py-1 border border-border">
+                <TableCell key={col.key} className="px-1 py-1">
                   <Input
                     type={col.type === "number" ? "number" : "text"}
                     value={row[col.key] ?? ""}
                     onChange={(e) => updateCell(i, col.key, e.target.value)}
                     className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
                   />
-                </td>
+                </TableCell>
               ))}
-              <td className="px-1 py-1 border border-border text-center">
+              <TableCell className="px-1 py-1 text-center">
                 <Button
                   type="button"
                   variant="ghost"
@@ -73,11 +74,11 @@ export default function RepeatableTable<T extends Record<string, string | number
                 >
                   <Trash2 className="w-3 h-3" />
                 </Button>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       <Button type="button" variant="outline" size="sm" className="mt-2 w-full" onClick={addRow}>
         <Plus className="w-3 h-3 mr-1" /> Přidat řádek
       </Button>

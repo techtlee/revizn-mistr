@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { RotateCcw } from "lucide-react";
 
 interface SignatureFieldProps {
@@ -36,7 +37,7 @@ export default function SignatureField({ label, value, onChange }: SignatureFiel
 
   return (
     <div>
-      <div className="text-sm font-medium text-foreground mb-1">{label}</div>
+      <Label className="mb-1 block">{label}</Label>
       <div className="border border-input rounded-md overflow-hidden bg-background">
         <SignatureCanvas
           ref={sigRef}

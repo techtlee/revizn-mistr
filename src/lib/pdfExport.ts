@@ -49,18 +49,20 @@ async function renderAnnotationsToDataUrl(json: string): Promise<{ dataUrl: stri
     if (!data.objects || data.objects.length === 0) return null;
     const w = data.width || 800;
     const h = data.height || 400;
-    const { Canvas } = await import("fabric");
+    const { Canvas: FabricCanvas } = await import("fabric");
     const canvasEl = document.createElement("canvas");
     canvasEl.width = w;
     canvasEl.height = h;
-    canvasEl.style.cssText = "position:fixed;left:-10000px;top:0;";
-    document.body.appendChild(canvasEl);
-    const fc = new Canvas(canvasEl, { width: w, height: h, backgroundColor: "transparent" });
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = "position:fixed;left:-10000px;top:0;";
+    wrapper.appendChild(canvasEl);
+    document.body.appendChild(wrapper);
+    const fc = new FabricCanvas(canvasEl, { width: w, height: h, backgroundColor: "transparent" });
     await fc.loadFromJSON(json);
     fc.renderAll();
-    const dataUrl = canvasEl.toDataURL("image/png");
+    const dataUrl = fc.toDataURL({ format: "png", multiplier: 2 });
     fc.dispose();
-    document.body.removeChild(canvasEl);
+    document.body.removeChild(wrapper);
     return { dataUrl, width: w, height: h };
   } catch {
     return null;
@@ -179,11 +181,11 @@ function buildHTML(
     </div>
     ${report.katastr_map_url ? (() => {
       const ar = annotationResult;
-      const aspectRatio = "2/1";
+      const aspectRatio = ar ? `${ar.width}/${ar.height}` : "2/1";
       return `<div style="margin-top:8px"><div class="fl">Katastrální mapa</div>
         <div style="position:relative;margin-top:3px;border:1px solid #ccc;border-radius:3px;overflow:hidden;width:100%;aspect-ratio:${aspectRatio};background:#fff">
-          <img src="${report.katastr_map_url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;transform-origin:top left" alt=""/>
-          ${ar ? `<img src="${ar.dataUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;transform-origin:top left" alt=""/>` : ""}
+          <img src="${report.katastr_map_url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill" alt=""/>
+          ${ar ? `<img src="${ar.dataUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill" alt=""/>` : ""}
         </div></div>`;
     })() : ""}
     </div>
@@ -422,16 +424,16 @@ export async function generatePDF(
 
     for (let i = 0; i < pages.length; i++) {
       const canvas = await html2canvas(pages[i], {
-        scale: 3,
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
       });
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/jpeg", 0.82);
       if (i > 0) {
         pdf.addPage();
       }
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
     }
 
     if (pages.length === 0) {

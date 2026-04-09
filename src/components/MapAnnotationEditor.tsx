@@ -1,18 +1,27 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, PencilBrush, IText, Line, Rect } from "fabric";
+import { Canvas as FabricCanvas, PencilBrush, IText } from "fabric";
 import { Button } from "@/components/ui/button";
 import {
   Pen,
   Type,
-  Minus,
-  Square,
   Undo2,
   Trash2,
   Save,
   Pointer,
 } from "lucide-react";
 
-type Tool = "select" | "pen" | "text" | "line" | "rect";
+function GroundIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <line x1="12" y1="3" x2="12" y2="13" />
+      <line x1="5" y1="13" x2="19" y2="13" />
+      <line x1="7.5" y1="17" x2="16.5" y2="17" />
+      <line x1="10" y1="21" x2="14" y2="21" />
+    </svg>
+  );
+}
+
+type Tool = "select" | "pen" | "text" | "ground";
 
 interface MapAnnotationEditorProps {
   imageUrl: string;
@@ -33,8 +42,6 @@ export default function MapAnnotationEditor({
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState("#ef4444");
   const [history, setHistory] = useState<string[]>([]);
-  const drawStartRef = useRef<{ x: number; y: number } | null>(null);
-  const tempShapeRef = useRef<Line | Rect | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -123,58 +130,20 @@ export default function MapAnnotationEditor({
         });
       }
 
-      if (tool === "line" || tool === "rect") {
+      if (tool === "ground") {
         fc.on("mouse:down", (opt) => {
           if (opt.target) return;
           const pointer = fc.getScenePoint(opt.e);
-          drawStartRef.current = { x: pointer.x, y: pointer.y };
-
-          if (tool === "line") {
-            const line = new Line(
-              [pointer.x, pointer.y, pointer.x, pointer.y],
-              { stroke: color, strokeWidth: 3, selectable: true }
-            );
-            fc.add(line);
-            tempShapeRef.current = line;
-          } else {
-            const rect = new Rect({
-              left: pointer.x,
-              top: pointer.y,
-              width: 0,
-              height: 0,
-              stroke: color,
-              strokeWidth: 2,
-              fill: "transparent",
-              selectable: true,
-            });
-            fc.add(rect);
-            tempShapeRef.current = rect;
-          }
-        });
-
-        fc.on("mouse:move", (opt) => {
-          if (!drawStartRef.current || !tempShapeRef.current) return;
-          const pointer = fc.getScenePoint(opt.e);
-          const shape = tempShapeRef.current;
-
-          if (shape instanceof Line) {
-            shape.set({ x2: pointer.x, y2: pointer.y });
-          } else if (shape instanceof Rect) {
-            const sx = drawStartRef.current.x;
-            const sy = drawStartRef.current.y;
-            shape.set({
-              left: Math.min(sx, pointer.x),
-              top: Math.min(sy, pointer.y),
-              width: Math.abs(pointer.x - sx),
-              height: Math.abs(pointer.y - sy),
-            });
-          }
-          fc.renderAll();
-        });
-
-        fc.on("mouse:up", () => {
-          drawStartRef.current = null;
-          tempShapeRef.current = null;
+          const symbol = new IText("\u23DA", {
+            left: pointer.x - 12,
+            top: pointer.y - 14,
+            fontSize: 28,
+            fill: color,
+            fontFamily: "Arial, sans-serif",
+            editable: false,
+          });
+          fc.add(symbol);
+          fc.setActiveObject(symbol);
           saveSnapshot();
         });
       }
@@ -221,16 +190,17 @@ export default function MapAnnotationEditor({
   const handleSave = () => {
     const fc = fabricRef.current;
     if (!fc) return;
-    const json = JSON.stringify(fc.toJSON());
-    onSave(json);
+    const data = fc.toJSON();
+    (data as any).width = fc.getWidth();
+    (data as any).height = fc.getHeight();
+    onSave(JSON.stringify(data));
   };
 
-  const tools: { id: Tool; icon: typeof Pen; label: string }[] = [
+  const tools: { id: Tool; icon: React.FC<React.SVGProps<SVGSVGElement>>; label: string }[] = [
     { id: "select", icon: Pointer, label: "Vybrat" },
     { id: "pen", icon: Pen, label: "Kreslení" },
     { id: "text", icon: Type, label: "Text" },
-    { id: "line", icon: Minus, label: "Čára" },
-    { id: "rect", icon: Square, label: "Obdélník" },
+    { id: "ground", icon: GroundIcon, label: "Uzemnění ⏚" },
   ];
 
   return (
@@ -250,12 +220,15 @@ export default function MapAnnotationEditor({
         ))}
         <div className="w-px h-6 bg-border mx-1" />
         {COLORS.map((c) => (
-          <button
+          <Button
             key={c}
             type="button"
-            className="w-6 h-6 rounded-full border-2 transition-transform"
+            variant="ghost"
+            size="icon"
+            className="w-7 h-7 rounded-full p-0 transition-transform"
             style={{
               backgroundColor: c,
+              borderWidth: 2,
               borderColor: color === c ? "#111" : "transparent",
               transform: color === c ? "scale(1.2)" : "scale(1)",
             }}

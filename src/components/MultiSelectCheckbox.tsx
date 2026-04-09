@@ -19,7 +19,7 @@ export default function MultiSelectCheckbox({ label, options, selected, onChange
 
   return (
     <div>
-      <div className="text-sm font-medium text-foreground mb-2">{label}</div>
+      <Label className="mb-2 block">{label}</Label>
       <div className="space-y-2">
         {options.map(opt => (
           <div key={opt} className="flex items-center gap-2">
