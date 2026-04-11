@@ -28,7 +28,10 @@ export type Database = {
           ev_cislo_osvedceni: string | null
           ev_cislo_opravneni: string | null
           revizi_pritomni: string | null
-          nazev_adresa_objektu: string | null
+          adresa_ulice: string | null
+          adresa_obec: string | null
+          adresa_psc: string | null
+          adresa_doplnek: string | null
           objednatel_revize: string | null
           majitel_objektu: string | null
           provozovatel_objektu: string | null
@@ -95,7 +98,10 @@ export type Database = {
           ev_cislo_osvedceni?: string | null
           ev_cislo_opravneni?: string | null
           revizi_pritomni?: string | null
-          nazev_adresa_objektu?: string | null
+          adresa_ulice?: string | null
+          adresa_obec?: string | null
+          adresa_psc?: string | null
+          adresa_doplnek?: string | null
           objednatel_revize?: string | null
           majitel_objektu?: string | null
           provozovatel_objektu?: string | null
@@ -162,7 +168,10 @@ export type Database = {
           ev_cislo_osvedceni?: string | null
           ev_cislo_opravneni?: string | null
           revizi_pritomni?: string | null
-          nazev_adresa_objektu?: string | null
+          adresa_ulice?: string | null
+          adresa_obec?: string | null
+          adresa_psc?: string | null
+          adresa_doplnek?: string | null
           objednatel_revize?: string | null
           majitel_objektu?: string | null
           provozovatel_objektu?: string | null

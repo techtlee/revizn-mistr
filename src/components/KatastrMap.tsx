@@ -8,6 +8,7 @@ import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
 import { MapPin, Camera, Trash2, Loader2, Search, Pencil } from "lucide-react";
 import MapAnnotationEditor from "@/components/MapAnnotationEditor";
+import { geocodeCzechAddressParts } from "@/lib/addressSearch";
 import "leaflet/dist/leaflet.css";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -23,10 +24,13 @@ const DETAIL_ZOOM = 18;
 
 const WMS_URL = "https://services.cuzk.cz/wms/local-km-wms.asp";
 const WMS_LAYERS = "KN";
-const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-
 interface KatastrMapProps {
-  address: string | null | undefined;
+  /** Vyplněné díly adresy — pro geokódování se skládají do jednoho dotazu. */
+  addressParts: {
+    adresa_ulice?: string | null;
+    adresa_obec?: string | null;
+    adresa_psc?: string | null;
+  };
   imageUrl: string | null | undefined;
   annotations: string | null | undefined;
   onImageChange: (url: string | null) => void;
@@ -49,27 +53,6 @@ function FlyToHandler({ center, zoom }: { center: [number, number] | null; zoom:
     }
   }, [center, zoom, map]);
   return null;
-}
-
-async function geocodeAddress(address: string): Promise<[number, number] | null> {
-  try {
-    const params = new URLSearchParams({
-      q: address,
-      countrycodes: "cz",
-      format: "json",
-      limit: "1",
-    });
-    const res = await fetch(`${NOMINATIM_URL}?${params}`, {
-      headers: { "Accept-Language": "cs" },
-    });
-    const data = await res.json();
-    if (data.length > 0) {
-      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-    }
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 function buildWmsUrl(map: L.Map): string {
@@ -98,7 +81,7 @@ function buildWmsUrl(map: L.Map): string {
 type Mode = "map" | "annotate" | "preview";
 
 export default function KatastrMap({
-  address,
+  addressParts,
   imageUrl,
   annotations,
   onImageChange,
@@ -112,22 +95,29 @@ export default function KatastrMap({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(imageUrl ? "preview" : "map");
 
+  const hasStreetCity =
+    Boolean(addressParts.adresa_ulice?.trim()) && Boolean(addressParts.adresa_obec?.trim());
+
   const handleSearch = useCallback(async () => {
-    if (!address?.trim()) {
-      setSearchError("Nejprve zadejte adresu objektu.");
+    if (!hasStreetCity) {
+      setSearchError("Vyplňte ulici a obec (město).");
       return;
     }
     setSearching(true);
     setSearchError(null);
-    const coords = await geocodeAddress(address);
+    const coords = await geocodeCzechAddressParts({
+      adresa_ulice: addressParts.adresa_ulice,
+      adresa_obec: addressParts.adresa_obec,
+      adresa_psc: addressParts.adresa_psc,
+    });
     if (coords) {
       setFlyTarget(coords);
       setFlyZoom(DETAIL_ZOOM);
     } else {
-      setSearchError("Adresu se nepodařilo najít na mapě.");
+      setSearchError("Adresu se nepodařilo najít na mapě. Zkuste doplnit číslo popisné nebo PSČ.");
     }
     setSearching(false);
-  }, [address]);
+  }, [addressParts.adresa_ulice, addressParts.adresa_obec, addressParts.adresa_psc, hasStreetCity]);
 
   const handleCapture = useCallback(() => {
     const map = mapInstanceRef.current;

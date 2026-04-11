@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,7 @@ import {
   useUpsertCompany,
 } from "@/hooks/useLibrary";
 import CompanyCombobox from "@/components/CompanyCombobox";
+import ObjectAddressFields from "@/components/ObjectAddressFields";
 import { mergePinnedDefaultsIntoForm } from "@/lib/formSettings";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
@@ -247,6 +248,16 @@ export default function ReportForm() {
   }, [id, isEdit]);
 
   const set = (key: keyof Report, val: unknown) => setForm(f => ({ ...f, [key]: val }));
+
+  const patchObjectAddress = useCallback(
+    (patch: {
+      adresa_ulice?: string;
+      adresa_obec?: string;
+      adresa_psc?: string;
+      adresa_doplnek?: string;
+    }) => setForm(f => ({ ...f, ...patch })),
+    []
+  );
 
   const applyLibraryCompany = (id: string) => {
     const c = savedCompanies.find(x => x.id === id);
@@ -530,12 +541,22 @@ export default function ReportForm() {
       <SectionCard title="Objekt a objednatel">
         <div className="space-y-6">
           <div className="form-grid">
-            <FField label="Název a adresa objektu" full>
-              <Input value={form.nazev_adresa_objektu || ""} onChange={e => set("nazev_adresa_objektu", e.target.value)} />
+            <FField label="Adresa objektu" full>
+              <ObjectAddressFields
+                adresa_ulice={form.adresa_ulice || ""}
+                adresa_obec={form.adresa_obec || ""}
+                adresa_psc={form.adresa_psc || ""}
+                adresa_doplnek={form.adresa_doplnek || ""}
+                onPatch={patchObjectAddress}
+              />
             </FField>
           </div>
           <KatastrMap
-            address={form.nazev_adresa_objektu}
+            addressParts={{
+              adresa_ulice: form.adresa_ulice,
+              adresa_obec: form.adresa_obec,
+              adresa_psc: form.adresa_psc,
+            }}
             imageUrl={form.katastr_map_url}
             annotations={form.katastr_annotations}
             onImageChange={(url) => set("katastr_map_url", url)}
