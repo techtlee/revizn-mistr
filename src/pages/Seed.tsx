@@ -102,6 +102,13 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/** Formát seed dat: „Ulice č.p., Obec“. */
+function splitSeedStreet(s: string): { ulice: string; obec: string } {
+  const i = s.lastIndexOf(",");
+  if (i === -1) return { ulice: s.trim(), obec: "" };
+  return { ulice: s.slice(0, i).trim(), obec: s.slice(i + 1).trim() };
+}
+
 function generateReports() {
   const reports = [];
   for (let i = 1; i <= 30; i++) {
@@ -112,6 +119,7 @@ function generateReports() {
       ? ZAVADY_POOL.filter(z => z).slice(0, 2 + Math.floor(Math.random() * 3)).join("\n")
       : Math.random() > 0.6 ? pick(ZAVADY_POOL.filter(z => z)) : "";
 
+    const { ulice: adresa_ulice, obec: adresa_obec } = splitSeedStreet(STREETS[i - 1]);
     reports.push({
       ev_cislo_zpravy: `${String(i).padStart(2, "0")}/${datumZahajeni.slice(2, 4)}`,
       typ_revize: pick(TYP_REVIZE),
@@ -122,7 +130,10 @@ function generateReports() {
       adresa_technika: "Třebešínská 10, Praha 3",
       ev_cislo_osvedceni: "E1-A/0" + (1000 + Math.floor(Math.random() * 9000)),
       ev_cislo_opravneni: "MO-" + (100 + Math.floor(Math.random() * 900)) + "/26",
-      nazev_adresa_objektu: STREETS[i - 1],
+      adresa_ulice,
+      adresa_obec,
+      adresa_psc: null,
+      adresa_doplnek: null,
       objednatel_revize: pick(OBJEDNATELE),
       majitel_objektu: pick(OBJEDNATELE),
       provozovatel_objektu: pick(OBJEDNATELE),

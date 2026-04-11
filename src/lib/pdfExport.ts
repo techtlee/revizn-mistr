@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { Tables } from "@/integrations/supabase/types";
+import { formatObjektAdresaOneLine } from "@/lib/objectAddress";
 import { CHECKLIST_E11, CHECKLIST_E12 } from "@/components/InspectionChecklist";
 
 type Report = Tables<"inspection_reports">;
@@ -168,7 +169,7 @@ function buildHTML(
   <div class="sec">
     <div class="st">Objekt a objednatel</div>
     <div class="sb"><div class="grid">
-      ${field("Název a adresa objektu", s(report.nazev_adresa_objektu), true)}
+      ${field("Název a adresa objektu", s(formatObjektAdresaOneLine(report)), true)}
       ${field("Objednatel revize", s(report.objednatel_revize))}
       ${field("Majitel objektu", s(report.majitel_objektu))}
       ${field("Provozovatel objektu", s(report.provozovatel_objektu))}

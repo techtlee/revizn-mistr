@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatObjektAdresaOneLine, objectAddressSearchText } from "@/lib/objectAddress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,7 +108,7 @@ function PaginationControls({ page, totalPages, onPageChange }: { page: number; 
 interface DeadlineRow {
   id: string;
   ev_cislo_zpravy: string | null;
-  nazev_adresa_objektu: string | null;
+  adresa_zobrazeni: string;
   objednatel_revize: string | null;
   trida_lps: string | null;
   datum_zahajeni: string;
@@ -116,15 +117,25 @@ interface DeadlineRow {
   urgency: UrgencyStatus;
 }
 
-function buildDeadlineRows(
-  reports: { id: string; ev_cislo_zpravy: string | null; nazev_adresa_objektu: string | null; objednatel_revize: string | null; trida_lps: string | null; datum_zahajeni: string | null; created_at: string }[],
-  type: RevisionType,
-): DeadlineRow[] {
+type ReportListRow = {
+  id: string;
+  ev_cislo_zpravy: string | null;
+  adresa_ulice: string | null;
+  adresa_obec: string | null;
+  adresa_psc: string | null;
+  adresa_doplnek: string | null;
+  objednatel_revize: string | null;
+  trida_lps: string | null;
+  datum_zahajeni: string | null;
+  created_at: string;
+};
+
+function buildDeadlineRows(reports: ReportListRow[], type: RevisionType): DeadlineRow[] {
   const withDate = reports.filter((r): r is typeof r & { datum_zahajeni: string } => !!r.datum_zahajeni);
 
   const latestByBuilding = new Map<string, typeof withDate[number]>();
   for (const r of withDate) {
-    const key = (r.nazev_adresa_objektu || r.id).trim().toLowerCase();
+    const key = (formatObjektAdresaOneLine(r) || r.id).trim().toLowerCase();
     const existing = latestByBuilding.get(key);
     if (!existing || r.datum_zahajeni > existing.datum_zahajeni) {
       latestByBuilding.set(key, r);
@@ -140,7 +151,7 @@ function buildDeadlineRows(
       return {
         id: r.id,
         ev_cislo_zpravy: r.ev_cislo_zpravy,
-        nazev_adresa_objektu: r.nazev_adresa_objektu,
+        adresa_zobrazeni: formatObjektAdresaOneLine(r),
         objednatel_revize: r.objednatel_revize,
         trida_lps: r.trida_lps,
         datum_zahajeni: r.datum_zahajeni,
@@ -168,7 +179,7 @@ export default function Index() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inspection_reports")
-        .select("id, ev_cislo_zpravy, objednatel_revize, nazev_adresa_objektu, datum_zahajeni, celkovy_posudek, revizni_technik, typ_revize, trida_lps, created_at")
+        .select("id, ev_cislo_zpravy, objednatel_revize, adresa_ulice, adresa_obec, adresa_psc, adresa_doplnek, datum_zahajeni, celkovy_posudek, revizni_technik, typ_revize, trida_lps, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -181,7 +192,7 @@ export default function Index() {
       const matchesSearch =
         r.ev_cislo_zpravy?.toLowerCase().includes(q) ||
         r.objednatel_revize?.toLowerCase().includes(q) ||
-        r.nazev_adresa_objektu?.toLowerCase().includes(q);
+        objectAddressSearchText(r).includes(q);
       if (!matchesSearch) return false;
     }
     if (filterDatumOd || filterDatumDo) {
@@ -684,7 +695,7 @@ export default function Index() {
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Building2 className="w-3.5 h-3.5 shrink-0" />
-                          {report.nazev_adresa_objektu || "—"}
+                          {formatObjektAdresaOneLine(report) || "—"}
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
@@ -836,7 +847,7 @@ function DeadlineView({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="font-medium">{row.nazev_adresa_objektu || "—"}</span>
+                      <span className="font-medium">{row.adresa_zobrazeni || "—"}</span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
