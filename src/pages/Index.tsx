@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import ThemeToggle from "@/components/ThemeToggle";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatObjektAdresaOneLine, objectAddressSearchText } from "@/lib/objectAddress";
@@ -25,15 +24,9 @@ import {
   BarChart3,
   CheckCircle2,
   XCircle,
-  LogOut,
-  Library,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  ListTree,
-  SlidersHorizontal,
-  AlertTriangle,
   Clock,
   Eye,
   Shield,
@@ -44,15 +37,6 @@ import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/lib/pdfExport";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import type { Tables } from "@/integrations/supabase/types";
@@ -170,7 +154,6 @@ export default function Index() {
   const [filterPosudek, setFilterPosudek] = useState<string>("all");
   const [filterDruh, setFilterDruh] = useState<string>("all");
   const [reportPage, setReportPage] = useState(0);
-  const { signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -180,6 +163,7 @@ export default function Index() {
       const { data, error } = await supabase
         .from("inspection_reports")
         .select("id, ev_cislo_zpravy, objednatel_revize, adresa_ulice, adresa_obec, adresa_psc, adresa_doplnek, datum_zahajeni, celkovy_posudek, revizni_technik, typ_revize, trida_lps, created_at")
+        .or("status.eq.complete,status.is.null")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -318,91 +302,11 @@ export default function Index() {
   }, [officialDeadlines, visualDeadlines]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="nav-bar">
-        <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="font-bold text-sm sm:text-base text-foreground tracking-wide uppercase">Vitmajer</span>
-            <span className="text-[10px] text-muted-foreground tracking-widest hidden sm:block">Hromosvody</span>
-          </div>
-        </Link>
-        <div className="ml-auto flex items-center gap-2 shrink-0">
-          <ThemeToggle />
-          <div className="flex items-center">
-            <Button variant="outline" size="sm" className="text-sm rounded-r-none border-r-0 pr-2 sm:pr-3" asChild>
-              <Link to="/settings">
-                <Library className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Knihovna</span>
-              </Link>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-sm rounded-l-none px-2" aria-label="Rychlý vstup do knihovny">
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Knihovna — rychlý vstup</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/settings" className="cursor-pointer">
-                    <Library className="w-4 h-4 mr-2" />
-                    Přehled
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings/firmy" className="cursor-pointer">
-                    <Building2 className="w-4 h-4 mr-2" />
-                    Montážní firmy
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings/pristroje" className="cursor-pointer">
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Přístroje
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings/sablony-popisu" className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Šablony popisu
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings/zavady" className="cursor-pointer">
-                    <ListTree className="w-4 h-4 mr-2" />
-                    Časté závady
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings/vychozi-hodnoty" className="cursor-pointer">
-                    <SlidersHorizontal className="w-4 h-4 mr-2" />
-                    Výchozí hodnoty
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <Button onClick={() => navigate("/report/new")} size="sm" className="text-sm">
-            <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Nová revize</span>
-            <span className="sm:hidden">Nová</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => signOut()} className="text-sm">
-            <LogOut className="w-4 h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Odhlásit</span>
-          </Button>
-        </div>
-      </nav>
-
-      <div className="page-content">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revizní zprávy LPS</h1>
-          <p className="text-muted-foreground mt-1">Hromosvody Vitmajer – správa revizí dle ČSN EN 62305</p>
-        </div>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Revizní zprávy LPS</h1>
+        <p className="text-muted-foreground mt-1">Revizní mistr – správa revizí dle ČSN EN 62305</p>
+      </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 mb-8">
           <Card>
@@ -736,7 +640,6 @@ export default function Index() {
             })()}
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

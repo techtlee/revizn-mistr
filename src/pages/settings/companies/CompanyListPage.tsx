@@ -36,7 +36,7 @@ export default function CompanyListPage() {
           </p>
         </div>
         <Button asChild>
-          <Link to="/settings/firmy/novy">
+          <Link to="/library/firmy/novy">
             <Plus className="w-4 h-4 mr-2" />
             Nová firma
           </Link>
@@ -79,7 +79,7 @@ export default function CompanyListPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild title="Upravit">
-                        <Link to={`/settings/firmy/${c.id}`}>
+                        <Link to={`/library/firmy/${c.id}`}>
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>

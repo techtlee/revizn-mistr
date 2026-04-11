@@ -11,7 +11,7 @@ import { useTechTemplatesQuery, useUpsertTechTemplate } from "@/hooks/useLibrary
 
 export default function TechTemplateFormPage() {
   const { id } = useParams<{ id: string }>();
-  const isNew = useMatch({ path: "/settings/sablony-popisu/novy", end: true }) !== null;
+  const isNew = useMatch({ path: "/library/sablony-popisu/novy", end: true }) !== null;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: rows = [], isPending } = useTechTemplatesQuery();
@@ -43,7 +43,7 @@ export default function TechTemplateFormPage() {
       {
         onSuccess: () => {
           toast({ title: "Uloženo", description: isNew ? "Šablona přidána." : "Změny uloženy." });
-          navigate("/settings/sablony-popisu");
+          navigate("/library/sablony-popisu");
         },
         onError: () => toast({ title: "Chyba ukládání", variant: "destructive" }),
       },
@@ -65,7 +65,7 @@ export default function TechTemplateFormPage() {
           <CardTitle>Záznam nenalezen</CardTitle>
           <CardDescription>
             <Button variant="link" className="px-0 h-auto" asChild>
-              <Link to="/settings/sablony-popisu">Zpět na seznam</Link>
+              <Link to="/library/sablony-popisu">Zpět na seznam</Link>
             </Button>
           </CardDescription>
         </CardHeader>
@@ -84,7 +84,7 @@ export default function TechTemplateFormPage() {
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" className="-ml-2" asChild>
-        <Link to="/settings/sablony-popisu">
+        <Link to="/library/sablony-popisu">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Zpět na seznam
         </Link>

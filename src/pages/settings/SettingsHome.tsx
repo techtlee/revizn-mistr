@@ -4,31 +4,31 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 
 const cards = [
   {
-    to: "/settings/firmy",
+    to: "/library/firmy",
     title: "Montážní firmy",
     description: "Uložené firmy s IČ a evidenčním číslem pro rychlé doplnění v revizi.",
     icon: Building2,
   },
   {
-    to: "/settings/pristroje",
+    to: "/library/pristroje",
     title: "Šablony měřicích přístrojů",
     description: "Předvyplnění přístrojů v revizi.",
     icon: ClipboardList,
   },
   {
-    to: "/settings/sablony-popisu",
+    to: "/library/sablony-popisu",
     title: "Šablony technického popisu",
     description: "Textové šablony pro pole technický popis.",
     icon: FileText,
   },
   {
-    to: "/settings/zavady",
+    to: "/library/zavady",
     title: "Časté závady",
     description: "Předdefinované texty závad pro rychlý výběr.",
     icon: ListTree,
   },
   {
-    to: "/settings/vychozi-hodnoty",
+    to: "/library/vychozi-hodnoty",
     title: "Výchozí hodnoty revize",
     description: "Co se má předvyplnit při vytvoření nové zprávy.",
     icon: SlidersHorizontal,

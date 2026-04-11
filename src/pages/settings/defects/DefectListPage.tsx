@@ -34,7 +34,7 @@ export default function DefectListPage() {
           <p className="text-sm text-muted-foreground">Společná knihovna textů.</p>
         </div>
         <Button asChild>
-          <Link to="/settings/zavady/novy">
+          <Link to="/library/zavady/novy">
             <Plus className="w-4 h-4 mr-2" />
             Nová závada
           </Link>
@@ -69,7 +69,7 @@ export default function DefectListPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild title="Upravit">
-                        <Link to={`/settings/zavady/${d.id}`}>
+                        <Link to={`/library/zavady/${d.id}`}>
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>

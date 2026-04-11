@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Save, Download, Zap, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Download, Loader2, ChevronLeft, ChevronRight, FileEdit } from "lucide-react";
+import { useDraftAutosave, loadLocalDraft, clearLocalDraft } from "@/hooks/useDraftAutosave";
+import { useQueryClient } from "@tanstack/react-query";
 import RepeatableTable from "@/components/RepeatableTable";
 import RepeatableList from "@/components/RepeatableList";
 import MultiSelectCheckbox from "@/components/MultiSelectCheckbox";
@@ -141,10 +142,13 @@ export default function ReportForm() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [currentStep, setCurrentStep] = useState(0);
+  const [draftRestoreHandled, setDraftRestoreHandled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<Partial<Report>>(getDefaultReportForm);
@@ -172,6 +176,37 @@ export default function ReportForm() {
   const [instruments, setInstruments] = useState<Record<string, string | number | null>[]>([]);
   const [measurements, setMeasurements] = useState<Record<string, string | number | null>[]>([]);
   const [spdDevices, setSpdDevices] = useState<Record<string, string | number | null>[]>([]);
+
+  // Local autosave (debounced to localStorage)
+  useDraftAutosave(
+    id,
+    form as Record<string, unknown>,
+    instruments,
+    measurements,
+    spdDevices,
+    currentStep,
+    draftRestoreHandled && !loading,
+  );
+
+  // Restore local draft on mount (new reports only)
+  useEffect(() => {
+    if (isEdit || draftRestoreHandled) return;
+    const draft = loadLocalDraft(undefined);
+    if (draft) {
+      const ago = Math.round((Date.now() - draft.savedAt) / 60000);
+      const label = ago < 1 ? "méně než minutu" : `${ago} min`;
+      if (confirm(`Máte rozpracovaný koncept (uložen před ${label}). Chcete ho obnovit?`)) {
+        setForm(draft.form as Partial<Report>);
+        setInstruments(draft.instruments as Record<string, string | number | null>[]);
+        setMeasurements(draft.measurements as Record<string, string | number | null>[]);
+        setSpdDevices(draft.spdDevices as Record<string, string | number | null>[]);
+        setCurrentStep(draft.currentStep ?? 0);
+      } else {
+        clearLocalDraft(undefined);
+      }
+    }
+    setDraftRestoreHandled(true);
+  }, [isEdit, draftRestoreHandled]);
 
   useEffect(() => {
     if (isEdit && !authLoading && !user) navigate("/login");
@@ -305,53 +340,77 @@ export default function ReportForm() {
   };
   const doklady = (form.predlozene_doklady || {}) as Record<string, unknown>;
 
+  const saveToSupabase = async (status: "complete" | "draft") => {
+    let reportId = id;
+    const payload = { ...form, status, created_by: user?.id ?? null, draft_step: status === "draft" ? currentStep : null };
+    delete (payload as Record<string, unknown>).id;
+    delete (payload as Record<string, unknown>).created_at;
+    delete (payload as Record<string, unknown>).updated_at;
+
+    if (isEdit && id) {
+      const { error } = await supabase.from("inspection_reports").update(payload).eq("id", id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await supabase.from("inspection_reports").insert(payload).select().single();
+      if (error) throw error;
+      reportId = data.id;
+    }
+    if (!reportId) throw new Error("No report id");
+
+    await supabase.from("report_instruments").delete().eq("report_id", reportId);
+    if (instruments.length > 0) {
+      await supabase.from("report_instruments").insert(
+        instruments.map((inst, i) => ({ report_id: reportId!, ...inst, sort_order: i }))
+      );
+    }
+
+    await supabase.from("report_measurements").delete().eq("report_id", reportId);
+    if (measurements.length > 0) {
+      await supabase.from("report_measurements").insert(
+        measurements.map((m, i) => ({ report_id: reportId!, ...m, sort_order: i }))
+      );
+    }
+
+    await supabase.from("report_spd_devices").delete().eq("report_id", reportId);
+    if (spdDevices.length > 0) {
+      await supabase.from("report_spd_devices").insert(
+        spdDevices.map((s, i) => ({ report_id: reportId!, ...s, sort_order: i }))
+      );
+    }
+
+    return reportId;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      let reportId = id;
-      const payload = { ...form };
-      delete (payload as Record<string, unknown>).id;
-      delete (payload as Record<string, unknown>).created_at;
-      delete (payload as Record<string, unknown>).updated_at;
-
-      if (isEdit && id) {
-        const { error } = await supabase.from("inspection_reports").update(payload).eq("id", id);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.from("inspection_reports").insert(payload).select().single();
-        if (error) throw error;
-        reportId = data.id;
-      }
-      if (!reportId) throw new Error("No report id");
-
-      await supabase.from("report_instruments").delete().eq("report_id", reportId);
-      if (instruments.length > 0) {
-        await supabase.from("report_instruments").insert(
-          instruments.map((inst, i) => ({ report_id: reportId!, ...inst, sort_order: i }))
-        );
-      }
-
-      await supabase.from("report_measurements").delete().eq("report_id", reportId);
-      if (measurements.length > 0) {
-        await supabase.from("report_measurements").insert(
-          measurements.map((m, i) => ({ report_id: reportId!, ...m, sort_order: i }))
-        );
-      }
-
-      await supabase.from("report_spd_devices").delete().eq("report_id", reportId);
-      if (spdDevices.length > 0) {
-        await supabase.from("report_spd_devices").insert(
-          spdDevices.map((s, i) => ({ report_id: reportId!, ...s, sort_order: i }))
-        );
-      }
-
+      await saveToSupabase("complete");
+      clearLocalDraft(id);
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
       toast({ title: "Uloženo", description: "Revizní zpráva byla úspěšně uložena." });
-      navigate("/");
+      navigate("/reports");
     } catch (err) {
       console.error(err);
       toast({ title: "Chyba", description: "Nepodařilo se uložit zprávu.", variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      await saveToSupabase("draft");
+      clearLocalDraft(id);
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      toast({ title: "Koncept uložen", description: "Rozpracovaná zpráva byla uložena jako koncept." });
+      navigate("/drafts");
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Chyba", description: "Nepodařilo se uložit koncept.", variant: "destructive" });
+    } finally {
+      setSavingDraft(false);
     }
   };
 
@@ -1122,50 +1181,43 @@ export default function ReportForm() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="nav-bar">
-        <Link to="/" className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0">
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm hidden sm:inline">Zpět</span>
-        </Link>
-        <Link to="/" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="font-bold text-sm text-foreground tracking-wide uppercase">Vitmajer</span>
-            <span className="text-[9px] text-muted-foreground tracking-widest hidden sm:block">Hromosvody</span>
-          </div>
-        </Link>
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <ThemeToggle />
-          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="px-2 sm:px-3">
-            {exporting ? <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" /> : <Download className="w-4 h-4 sm:mr-1" />}
-            <span className="hidden sm:inline">PDF</span>
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving} className="px-2 sm:px-3">
-            {saving ? <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" /> : <Save className="w-4 h-4 sm:mr-1" />}
-            <span className="hidden sm:inline">{isEdit ? "Uložit změny" : "Uložit zprávu"}</span>
-          </Button>
-        </div>
-      </nav>
-
-      <div className="page-content space-y-6">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Link to="/reports" className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Zpět na zprávy</span>
+            </Link>
+          </div>
           <h1 className="text-2xl font-bold text-foreground">
             {isEdit ? "Upravit revizní zprávu" : "Nová revizní zpráva"}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Zpráva o revizi LPS dle ČSN EN 62305</p>
         </div>
-
-        <FormStepper steps={STEPS} currentStep={currentStep} onStepClick={setCurrentStep} />
-
-        {stepNavigation("top")}
-
-        {renderStep()}
-
-        {stepNavigation("bottom")}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+            PDF
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleSaveDraft} disabled={savingDraft || saving}>
+            {savingDraft ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileEdit className="w-4 h-4 mr-1" />}
+            Koncept
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving || savingDraft}>
+            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+            {isEdit ? "Uložit změny" : "Uložit zprávu"}
+          </Button>
+        </div>
       </div>
+
+      <FormStepper steps={STEPS} currentStep={currentStep} onStepClick={setCurrentStep} />
+
+      {stepNavigation("top")}
+
+      {renderStep()}
+
+      {stepNavigation("bottom")}
     </div>
   );
 }

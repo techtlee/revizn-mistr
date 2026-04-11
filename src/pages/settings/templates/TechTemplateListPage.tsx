@@ -34,7 +34,7 @@ export default function TechTemplateListPage() {
           <p className="text-sm text-muted-foreground">Společné texty pro všechny uživatele.</p>
         </div>
         <Button asChild>
-          <Link to="/settings/sablony-popisu/novy">
+          <Link to="/library/sablony-popisu/novy">
             <Plus className="w-4 h-4 mr-2" />
             Nová šablona
           </Link>
@@ -74,7 +74,7 @@ export default function TechTemplateListPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild title="Upravit">
-                        <Link to={`/settings/sablony-popisu/${t.id}`}>
+                        <Link to={`/library/sablony-popisu/${t.id}`}>
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>

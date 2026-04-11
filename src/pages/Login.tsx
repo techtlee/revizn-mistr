@@ -38,8 +38,8 @@ export default function Login() {
             <Zap className="w-5 h-5 text-white" />
           </div>
           <div className="flex flex-col leading-none">
-            <span className="font-bold text-sm sm:text-base text-foreground tracking-wide uppercase">Vitmajer</span>
-            <span className="text-[10px] text-muted-foreground tracking-widest hidden sm:block">Hromosvody</span>
+            <span className="font-bold text-sm sm:text-base text-foreground tracking-wide uppercase">Revizní mistr</span>
+            <span className="text-[10px] text-muted-foreground tracking-widest hidden sm:block">Správa revizí LPS</span>
           </div>
         </Link>
         <div className="ml-auto">
@@ -54,7 +54,7 @@ export default function Login() {
               <Zap className="w-7 h-7 text-white" />
             </div>
             <CardTitle className="text-xl">Přihlášení</CardTitle>
-            <p className="text-xs text-muted-foreground tracking-wider">HROMOSVODY VITMAJER</p>
+            <p className="text-xs text-muted-foreground tracking-wider">REVIZNÍ MISTR</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

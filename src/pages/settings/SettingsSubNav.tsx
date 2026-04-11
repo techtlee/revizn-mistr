@@ -2,12 +2,12 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { to: "/settings", label: "Přehled", end: true },
-  { to: "/settings/firmy", label: "Montážní firmy" },
-  { to: "/settings/pristroje", label: "Přístroje" },
-  { to: "/settings/sablony-popisu", label: "Šablony popisu" },
-  { to: "/settings/zavady", label: "Časté závady" },
-  { to: "/settings/vychozi-hodnoty", label: "Výchozí hodnoty" },
+  { to: "/library", label: "Přehled", end: true },
+  { to: "/library/firmy", label: "Montážní firmy" },
+  { to: "/library/pristroje", label: "Přístroje" },
+  { to: "/library/sablony-popisu", label: "Šablony popisu" },
+  { to: "/library/zavady", label: "Časté závady" },
+  { to: "/library/vychozi-hodnoty", label: "Výchozí hodnoty" },
 ] as const;
 
 export default function SettingsSubNav() {

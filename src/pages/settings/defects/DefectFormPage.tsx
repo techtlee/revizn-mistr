@@ -10,7 +10,7 @@ import { useCommonDefectsQuery, useUpsertCommonDefect } from "@/hooks/useLibrary
 
 export default function DefectFormPage() {
   const { id } = useParams<{ id: string }>();
-  const isNew = useMatch({ path: "/settings/zavady/novy", end: true }) !== null;
+  const isNew = useMatch({ path: "/library/zavady/novy", end: true }) !== null;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: rows = [], isPending } = useCommonDefectsQuery();
@@ -42,7 +42,7 @@ export default function DefectFormPage() {
       {
         onSuccess: () => {
           toast({ title: "Uloženo", description: isNew ? "Závada přidána." : "Změny uloženy." });
-          navigate("/settings/zavady");
+          navigate("/library/zavady");
         },
         onError: () => toast({ title: "Chyba ukládání", variant: "destructive" }),
       },
@@ -64,7 +64,7 @@ export default function DefectFormPage() {
           <CardTitle>Záznam nenalezen</CardTitle>
           <CardDescription>
             <Button variant="link" className="px-0 h-auto" asChild>
-              <Link to="/settings/zavady">Zpět na seznam</Link>
+              <Link to="/library/zavady">Zpět na seznam</Link>
             </Button>
           </CardDescription>
         </CardHeader>
@@ -83,7 +83,7 @@ export default function DefectFormPage() {
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" className="-ml-2" asChild>
-        <Link to="/settings/zavady">
+        <Link to="/library/zavady">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Zpět na seznam
         </Link>

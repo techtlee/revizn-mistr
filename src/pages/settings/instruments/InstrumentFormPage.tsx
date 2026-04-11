@@ -30,7 +30,7 @@ const emptyFields = (): InstrumentFields => ({
 
 export default function InstrumentFormPage() {
   const { id } = useParams<{ id: string }>();
-  const isNew = useMatch({ path: "/settings/pristroje/novy", end: true }) !== null;
+  const isNew = useMatch({ path: "/library/pristroje/novy", end: true }) !== null;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: rows = [], isPending } = useSavedInstrumentsQuery();
@@ -74,7 +74,7 @@ export default function InstrumentFormPage() {
       {
         onSuccess: () => {
           toast({ title: "Uloženo", description: isNew ? "Šablona přidána." : "Změny uloženy." });
-          navigate("/settings/pristroje");
+          navigate("/library/pristroje");
         },
         onError: () => toast({ title: "Chyba ukládání", variant: "destructive" }),
       },
@@ -96,7 +96,7 @@ export default function InstrumentFormPage() {
           <CardTitle>Záznam nenalezen</CardTitle>
           <CardDescription>
             <Button variant="link" className="px-0 h-auto" asChild>
-              <Link to="/settings/pristroje">Zpět na seznam</Link>
+              <Link to="/library/pristroje">Zpět na seznam</Link>
             </Button>
           </CardDescription>
         </CardHeader>
@@ -118,7 +118,7 @@ export default function InstrumentFormPage() {
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" className="-ml-2" asChild>
-        <Link to="/settings/pristroje">
+        <Link to="/library/pristroje">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Zpět na seznam
         </Link>

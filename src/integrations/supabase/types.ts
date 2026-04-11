@@ -80,6 +80,10 @@ export type Database = {
           razitko_url: string | null
           rozdelovnik: string | null
           seznam_priloh: string[] | null
+          status: string
+          draft_step: number | null
+          created_by: string | null
+          client_id: string | null
           created_at: string
           updated_at: string
         }
@@ -150,6 +154,10 @@ export type Database = {
           razitko_url?: string | null
           rozdelovnik?: string | null
           seznam_priloh?: string[] | null
+          status?: string
+          draft_step?: number | null
+          created_by?: string | null
+          client_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -220,6 +228,61 @@ export type Database = {
           razitko_url?: string | null
           rozdelovnik?: string | null
           seznam_priloh?: string[] | null
+          status?: string
+          draft_step?: number | null
+          created_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          id: string
+          name: string
+          ico: string | null
+          address_street: string | null
+          address_city: string | null
+          address_zip: string | null
+          email: string | null
+          phone: string | null
+          contact_person: string | null
+          notes: string | null
+          client_type: string[] | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          ico?: string | null
+          address_street?: string | null
+          address_city?: string | null
+          address_zip?: string | null
+          email?: string | null
+          phone?: string | null
+          contact_person?: string | null
+          notes?: string | null
+          client_type?: string[] | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          ico?: string | null
+          address_street?: string | null
+          address_city?: string | null
+          address_zip?: string | null
+          email?: string | null
+          phone?: string | null
+          contact_person?: string | null
+          notes?: string | null
+          client_type?: string[] | null
+          created_by?: string | null
           created_at?: string
           updated_at?: string
         }

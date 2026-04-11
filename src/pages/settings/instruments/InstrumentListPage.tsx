@@ -34,7 +34,7 @@ export default function InstrumentListPage() {
           <p className="text-sm text-muted-foreground">Společná knihovna pro všechny uživatele.</p>
         </div>
         <Button asChild>
-          <Link to="/settings/pristroje/novy">
+          <Link to="/library/pristroje/novy">
             <Plus className="w-4 h-4 mr-2" />
             Nová šablona
           </Link>
@@ -73,7 +73,7 @@ export default function InstrumentListPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild title="Upravit">
-                        <Link to={`/settings/pristroje/${r.id}`}>
+                        <Link to={`/library/pristroje/${r.id}`}>
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>

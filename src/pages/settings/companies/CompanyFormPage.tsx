@@ -10,7 +10,7 @@ import { useSavedCompaniesQuery, useUpsertCompany } from "@/hooks/useLibrary";
 
 export default function CompanyFormPage() {
   const { id } = useParams<{ id: string }>();
-  const isNew = useMatch({ path: "/settings/firmy/novy", end: true }) !== null;
+  const isNew = useMatch({ path: "/library/firmy/novy", end: true }) !== null;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: companies = [], isPending } = useSavedCompaniesQuery();
@@ -41,7 +41,7 @@ export default function CompanyFormPage() {
       {
         onSuccess: () => {
           toast({ title: "Uloženo", description: isNew ? "Firma byla přidána do knihovny." : "Změny byly uloženy." });
-          navigate("/settings/firmy");
+          navigate("/library/firmy");
         },
         onError: () =>
           toast({
@@ -68,7 +68,7 @@ export default function CompanyFormPage() {
           <CardTitle>Záznam nenalezen</CardTitle>
           <CardDescription>
             <Button variant="link" className="px-0 h-auto" asChild>
-              <Link to="/settings/firmy">Zpět na seznam</Link>
+              <Link to="/library/firmy">Zpět na seznam</Link>
             </Button>
           </CardDescription>
         </CardHeader>
@@ -87,7 +87,7 @@ export default function CompanyFormPage() {
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" className="-ml-2" asChild>
-        <Link to="/settings/firmy">
+        <Link to="/library/firmy">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Zpět na seznam
         </Link>
