@@ -11,15 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { useSavedInstrumentsQuery, useDeleteInstrumentTemplate } from "@/hooks/useLibrary";
 
 export default function InstrumentListPage() {
   const { toast } = useToast();
   const { data: rows = [], isPending, isError } = useSavedInstrumentsQuery();
   const del = useDeleteInstrumentTemplate();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
-  const remove = (id: string, label: string) => {
-    if (!confirm(`Odstranit šablonu „${label || "bez názvu"}“?`)) return;
+  const remove = async (id: string, label: string) => {
+    if (!await confirm({ title: "Odstranit šablonu", description: `Opravdu chcete odstranit šablonu „${label || "bez názvu"}“?`, confirmLabel: "Odstranit", variant: "destructive" })) return;
     del.mutate(id, {
       onSuccess: () => toast({ title: "Smazáno", description: "Šablona byla odebrána." }),
       onError: () => toast({ title: "Chyba", variant: "destructive" }),
@@ -95,6 +97,7 @@ export default function InstrumentListPage() {
           </CardContent>
         )}
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

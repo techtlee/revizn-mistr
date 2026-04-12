@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Save, Download, Loader2, ChevronLeft, ChevronRight, FileEdit } from "lucide-react";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ArrowLeft, ArrowRight, Save, Download, Loader2, ChevronLeft, ChevronRight, FileEdit, User, Pencil, Eye } from "lucide-react";
 import { useDraftAutosave, loadLocalDraft, clearLocalDraft } from "@/hooks/useDraftAutosave";
 import { useQueryClient } from "@tanstack/react-query";
 import RepeatableTable from "@/components/RepeatableTable";
@@ -138,11 +139,14 @@ function getDefaultReportForm(): Partial<Report> {
 
 export default function ReportForm() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const isEdit = !!id;
+  const viewMode = isEdit && !location.pathname.endsWith("/edit");
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -188,14 +192,20 @@ export default function ReportForm() {
     draftRestoreHandled && !loading,
   );
 
-  // Restore local draft on mount (new reports only)
   useEffect(() => {
     if (isEdit || draftRestoreHandled) return;
     const draft = loadLocalDraft(undefined);
-    if (draft) {
-      const ago = Math.round((Date.now() - draft.savedAt) / 60000);
-      const label = ago < 1 ? "méně než minutu" : `${ago} min`;
-      if (confirm(`Máte rozpracovaný koncept (uložen před ${label}). Chcete ho obnovit?`)) {
+    if (!draft) { setDraftRestoreHandled(true); return; }
+    const ago = Math.round((Date.now() - draft.savedAt) / 60000);
+    const label = ago < 1 ? "méně než minutu" : `${ago} min`;
+    (async () => {
+      const restore = await confirm({
+        title: "Obnovit rozpracovaný koncept?",
+        description: `Máte lokálně uložený koncept (před ${label}). Chcete ho obnovit, nebo začít znovu?`,
+        confirmLabel: "Obnovit",
+        cancelLabel: "Zahodit",
+      });
+      if (restore) {
         setForm(draft.form as Partial<Report>);
         setInstruments(draft.instruments as Record<string, string | number | null>[]);
         setMeasurements(draft.measurements as Record<string, string | number | null>[]);
@@ -204,8 +214,8 @@ export default function ReportForm() {
       } else {
         clearLocalDraft(undefined);
       }
-    }
-    setDraftRestoreHandled(true);
+      setDraftRestoreHandled(true);
+    })();
   }, [isEdit, draftRestoreHandled]);
 
   useEffect(() => {
@@ -513,6 +523,10 @@ export default function ReportForm() {
       {currentStep < STEPS.length - 1 ? (
         <Button onClick={goNext}>
           Další <ChevronRight className="w-4 h-4 ml-1" />
+        </Button>
+      ) : viewMode ? (
+        <Button variant="outline" disabled>
+          Konec
         </Button>
       ) : (
         <Button onClick={handleSave} disabled={saving}>
@@ -1191,23 +1205,49 @@ export default function ReportForm() {
             </Link>
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            {isEdit ? "Upravit revizní zprávu" : "Nová revizní zpráva"}
+            {viewMode ? "Revizní zpráva" : isEdit ? "Upravit revizní zprávu" : "Nová revizní zpráva"}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Zpráva o revizi LPS dle ČSN EN 62305</p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-muted-foreground text-sm">Zpráva o revizi LPS dle ČSN EN 62305</p>
+            {isEdit && form.client_id && (
+              <Link
+                to={`/clients/${form.client_id}`}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                <User className="w-3.5 h-3.5" />
+                Profil klienta
+              </Link>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting}>
-            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-            PDF
-          </Button>
-          <Button variant="secondary" size="sm" onClick={handleSaveDraft} disabled={savingDraft || saving}>
-            {savingDraft ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileEdit className="w-4 h-4 mr-1" />}
-            Koncept
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving || savingDraft}>
-            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-            {isEdit ? "Uložit změny" : "Uložit zprávu"}
-          </Button>
+          {viewMode ? (
+            <>
+              <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting}>
+                {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                Stáhnout PDF
+              </Button>
+              <Button size="sm" onClick={() => navigate(`/report/${id}/edit`)}>
+                <Pencil className="w-4 h-4 mr-1" />
+                Upravit
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting}>
+                {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                PDF
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleSaveDraft} disabled={savingDraft || saving}>
+                {savingDraft ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileEdit className="w-4 h-4 mr-1" />}
+                Koncept
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saving || savingDraft}>
+                {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                {isEdit ? "Uložit změny" : "Uložit zprávu"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1215,9 +1255,16 @@ export default function ReportForm() {
 
       {stepNavigation("top")}
 
-      {renderStep()}
+      {viewMode ? (
+        <div className="pointer-events-none opacity-75 select-none">
+          {renderStep()}
+        </div>
+      ) : (
+        renderStep()
+      )}
 
       {stepNavigation("bottom")}
+      <ConfirmDialog />
     </div>
   );
 }

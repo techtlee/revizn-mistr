@@ -52,6 +52,31 @@ export function useClientReports(clientId: string | undefined) {
   });
 }
 
+export async function findDuplicateClient(
+  ico: string | null | undefined,
+  name: string,
+  excludeId?: string,
+): Promise<Client | null> {
+  if (ico && ico.trim()) {
+    const q = supabase
+      .from("clients")
+      .select("*")
+      .eq("ico", ico.trim())
+      .limit(1);
+    if (excludeId) q.neq("id", excludeId);
+    const { data } = await q.maybeSingle();
+    if (data) return data;
+  }
+  const q2 = supabase
+    .from("clients")
+    .select("*")
+    .ilike("name", name.trim())
+    .limit(1);
+  if (excludeId) q2.neq("id", excludeId);
+  const { data: byName } = await q2.maybeSingle();
+  return byName ?? null;
+}
+
 export function useUpsertClient() {
   const qc = useQueryClient();
   const { user } = useAuth();

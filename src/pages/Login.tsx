@@ -9,17 +9,29 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Zap, LogIn, Loader2 } from "lucide-react";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const validate = () => {
+    const next: typeof errors = {};
+    if (!email.trim()) next.email = "Zadejte e-mailovou adresu.";
+    else if (!EMAIL_RE.test(email)) next.email = "Neplatný formát e-mailu.";
+    if (!password) next.password = "Zadejte heslo.";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (!validate()) return;
     setSubmitting(true);
     const { error } = await signIn(email, password);
     if (error) {
@@ -57,18 +69,19 @@ export default function Login() {
             <p className="text-xs text-muted-foreground tracking-wider">REVIZNÍ MISTR</p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
                   placeholder="admin@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }}
                   autoComplete="email"
-                  required
+                  className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Heslo</Label>
@@ -76,10 +89,11 @@ export default function Login() {
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors((p) => ({ ...p, password: undefined })); }}
                   autoComplete="current-password"
-                  required
+                  className={errors.password ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogIn className="w-4 h-4 mr-2" />}

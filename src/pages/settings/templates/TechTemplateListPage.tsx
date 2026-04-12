@@ -11,15 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { useTechTemplatesQuery, useDeleteTechTemplate } from "@/hooks/useLibrary";
 
 export default function TechTemplateListPage() {
   const { toast } = useToast();
   const { data: rows = [], isPending, isError } = useTechTemplatesQuery();
   const del = useDeleteTechTemplate();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
-  const remove = (id: string, name: string) => {
-    if (!confirm(`Odstranit šablonu „${name || "bez názvu"}“?`)) return;
+  const remove = async (id: string, name: string) => {
+    if (!await confirm({ title: "Odstranit šablonu", description: `Opravdu chcete odstranit šablonu „${name || "bez názvu"}“?`, confirmLabel: "Odstranit", variant: "destructive" })) return;
     del.mutate(id, {
       onSuccess: () => toast({ title: "Smazáno", description: "Šablona byla odebrána." }),
       onError: () => toast({ title: "Chyba", variant: "destructive" }),
@@ -96,6 +98,7 @@ export default function TechTemplateListPage() {
           </CardContent>
         )}
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

@@ -7,7 +7,9 @@ import { ThemeProvider } from "next-themes";
 import WaveBackground from "@/components/WaveBackground";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "./pages/Dashboard";
-import Index from "./pages/Index";
+import ReportList from "./pages/reports/ReportList";
+import ReportDeadlines from "./pages/reports/ReportDeadlines";
+import ReportStats from "./pages/reports/ReportStats";
 import Drafts from "./pages/Drafts";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
@@ -17,6 +19,7 @@ import Login from "./pages/Login";
 import ReportForm from "./pages/ReportForm";
 import NotFound from "./pages/NotFound";
 import Seed from "./pages/Seed";
+import Support from "./pages/Support";
 import SettingsLayout from "./pages/settings/SettingsLayout";
 import SettingsHome from "./pages/settings/SettingsHome";
 import CompanyListPage from "./pages/settings/companies/CompanyListPage";
@@ -65,7 +68,11 @@ const App = () => (
           {/* Authenticated routes with sidebar layout */}
           <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
             <Route index element={<Dashboard />} />
-            <Route path="reports" element={<Index />} />
+            <Route path="reports">
+              <Route index element={<ReportList />} />
+              <Route path="deadlines" element={<ReportDeadlines />} />
+              <Route path="stats" element={<ReportStats />} />
+            </Route>
             <Route path="drafts" element={<Drafts />} />
             <Route path="clients" element={<Clients />} />
             <Route path="clients/new" element={<ClientDetail />} />
@@ -74,6 +81,7 @@ const App = () => (
             <Route path="calendar" element={<CalendarView />} />
 
             <Route path="report/new" element={<ReportForm />} />
+            <Route path="report/:id" element={<ReportForm />} />
             <Route path="report/:id/edit" element={<ReportForm />} />
 
             <Route path="library" element={<SettingsLayout />}>
@@ -98,6 +106,7 @@ const App = () => (
             <Route path="settings/*" element={<Navigate to="/library" replace />} />
             <Route path="settings" element={<Navigate to="/library" replace />} />
 
+            <Route path="support" element={<Support />} />
             <Route path="seed" element={<Seed />} />
           </Route>
 

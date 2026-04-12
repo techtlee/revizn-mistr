@@ -11,15 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { useCommonDefectsQuery, useDeleteCommonDefect } from "@/hooks/useLibrary";
 
 export default function DefectListPage() {
   const { toast } = useToast();
   const { data: rows = [], isPending, isError } = useCommonDefectsQuery();
   const del = useDeleteCommonDefect();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
-  const remove = (id: string, label: string) => {
-    if (!confirm(`Odstranit závadu „${label || "bez textu"}“?`)) return;
+  const remove = async (id: string, label: string) => {
+    if (!await confirm({ title: "Odstranit závadu", description: `Opravdu chcete odstranit závadu „${label || "bez textu"}“?`, confirmLabel: "Odstranit", variant: "destructive" })) return;
     del.mutate(id, {
       onSuccess: () => toast({ title: "Smazáno", description: "Záznam byl odebrán." }),
       onError: () => toast({ title: "Chyba", variant: "destructive" }),
@@ -91,6 +93,7 @@ export default function DefectListPage() {
           </CardContent>
         )}
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

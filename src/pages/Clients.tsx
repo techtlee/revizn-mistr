@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientsQuery, useDeleteClient } from "@/hooks/useClients";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,7 @@ export default function Clients() {
   const { toast } = useToast();
   const { data: clients, isLoading } = useClientsQuery();
   const deleteClient = useDeleteClient();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filtered = clients?.filter((c) => {
@@ -44,8 +46,8 @@ export default function Clients() {
     );
   });
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Opravdu chcete smazat tohoto klienta?")) return;
+  const handleDelete = async (id: string) => {
+    if (!await confirm({ title: "Smazat klienta", description: "Opravdu chcete smazat tohoto klienta? Tuto akci nelze vrátit zpět.", confirmLabel: "Smazat", variant: "destructive" })) return;
     deleteClient.mutate(id, {
       onSuccess: () => toast({ title: "Smazáno", description: "Klient byl odstraněn." }),
       onError: () => toast({ title: "Chyba", description: "Nepodařilo se smazat klienta.", variant: "destructive" }),
@@ -197,6 +199,7 @@ export default function Clients() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   XCircle,
   Shield,
+  Eye,
 } from "lucide-react";
 import { addYears, differenceInDays, format } from "date-fns";
 import { cs } from "date-fns/locale";
@@ -225,10 +226,12 @@ export default function Objects() {
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/report/${obj.latestReportId}/edit`)}
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => navigate(`/report/${obj.latestReportId}`)}
+                          title="Zobrazit"
                         >
-                          Zobrazit
+                          <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
                     </TableRow>

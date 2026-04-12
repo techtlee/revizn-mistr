@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 
 interface SeedAddress {
   ulice: string;
@@ -101,6 +102,7 @@ export default function Seed() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
   const run = async () => {
     if (!user) {
@@ -110,17 +112,33 @@ export default function Seed() {
     setRunning(true);
 
     try {
-      // 1. Create clients
+      // 1. Create or reuse clients (deduplicate by ico + name)
       setStatus("Vytvářím klienty...");
-      const clientInserts = CLIENTS.map((c) => ({ ...c, created_by: user.id }));
-      const { data: clientRows, error: clientErr } = await supabase
-        .from("clients")
-        .insert(clientInserts)
-        .select("id, name");
-      if (clientErr) throw new Error(`Klienti: ${clientErr.message}`);
-
-      const clientIds = clientRows!.map((c) => c.id);
-      setStatus(`Vytvořeno ${clientIds.length} klientů.`);
+      const clientIds: string[] = [];
+      for (const c of CLIENTS) {
+        let existing: { id: string } | null = null;
+        if (c.ico) {
+          const { data } = await supabase
+            .from("clients")
+            .select("id")
+            .eq("ico", c.ico)
+            .eq("name", c.name)
+            .maybeSingle();
+          existing = data;
+        }
+        if (existing) {
+          clientIds.push(existing.id);
+        } else {
+          const { data: inserted, error } = await supabase
+            .from("clients")
+            .insert({ ...c, created_by: user.id })
+            .select("id")
+            .single();
+          if (error) throw new Error(`Klient ${c.name}: ${error.message}`);
+          clientIds.push(inserted!.id);
+        }
+      }
+      setStatus(`Připraveno ${clientIds.length} klientů.`);
 
       // 2. Create 27 complete reports + 3 drafts = 30 total
       let reportOk = 0;
@@ -251,7 +269,7 @@ export default function Seed() {
   };
 
   const clearAll = async () => {
-    if (!confirm("Opravdu smazat VŠECHNA data (zprávy, klienty, měření, přístroje)?")) return;
+    if (!await confirm({ title: "Smazat všechna data", description: "Opravdu chcete smazat VŠECHNA data (zprávy, klienty, měření, přístroje)? Tuto akci nelze vrátit zpět.", confirmLabel: "Smazat vše", variant: "destructive" })) return;
     setRunning(true);
     setStatus("Mažu všechna data...");
     try {
@@ -290,6 +308,7 @@ export default function Seed() {
       <Button variant="outline" onClick={() => navigate("/")} className="w-full">
         Zpět na dashboard
       </Button>
+      <ConfirmDialog />
     </div>
   );
 }

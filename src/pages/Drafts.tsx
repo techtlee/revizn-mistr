@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useDraftsQuery, useDeleteDraft } from "@/hooks/useDrafts";
 import { formatObjektAdresaOneLine } from "@/lib/objectAddress";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,9 +28,10 @@ export default function Drafts() {
   const { toast } = useToast();
   const { data: drafts, isLoading } = useDraftsQuery();
   const deleteDraft = useDeleteDraft();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Opravdu chcete smazat tento koncept?")) return;
+  const handleDelete = async (id: string) => {
+    if (!await confirm({ title: "Smazat koncept", description: "Opravdu chcete smazat tento koncept? Tuto akci nelze vrátit zpět.", confirmLabel: "Smazat", variant: "destructive" })) return;
     deleteDraft.mutate(id, {
       onSuccess: () => toast({ title: "Smazáno", description: "Koncept byl odstraněn." }),
       onError: () => toast({ title: "Chyba", description: "Nepodařilo se smazat koncept.", variant: "destructive" }),
@@ -153,6 +155,7 @@ export default function Drafts() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

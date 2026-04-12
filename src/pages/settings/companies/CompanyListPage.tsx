@@ -11,15 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { useSavedCompaniesQuery, useDeleteCompany } from "@/hooks/useLibrary";
 
 export default function CompanyListPage() {
   const { toast } = useToast();
   const { data: companies = [], isPending, isError } = useSavedCompaniesQuery();
   const deleteCompany = useDeleteCompany();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
-  const remove = (id: string, nazev: string) => {
-    if (!confirm(`Odstranit firmu „${nazev || "bez názvu"}“?`)) return;
+  const remove = async (id: string, nazev: string) => {
+    if (!await confirm({ title: "Odstranit firmu", description: `Opravdu chcete odstranit firmu „${nazev || "bez názvu"}“?`, confirmLabel: "Odstranit", variant: "destructive" })) return;
     deleteCompany.mutate(id, {
       onSuccess: () => toast({ title: "Smazáno", description: "Firma byla odebrána z knihovny." }),
       onError: () => toast({ title: "Chyba", description: "Nepodařilo se smazat (jen vlastní záznamy).", variant: "destructive" }),
@@ -101,6 +103,7 @@ export default function CompanyListPage() {
           </CardContent>
         )}
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

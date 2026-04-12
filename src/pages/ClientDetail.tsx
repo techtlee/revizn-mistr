@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useClientQuery, useClientReports, useUpsertClient } from "@/hooks/useClients";
+import { useClientQuery, useClientReports, useUpsertClient, findDuplicateClient } from "@/hooks/useClients";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { formatObjektAdresaOneLine } from "@/lib/objectAddress";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,7 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cs } from "date-fns/locale";
@@ -57,6 +59,7 @@ export default function ClientDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const upsert = useUpsertClient();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const { data: existing, isLoading } = useClientQuery(isNew ? undefined : id);
   const { data: reports } = useClientReports(isNew ? undefined : id);
   const [form, setForm] = useState<Partial<Client>>(emptyClient);
@@ -88,6 +91,20 @@ export default function ClientDetail() {
     }
     try {
       if (isNew) {
+        const dup = await findDuplicateClient(form.ico, form.name!);
+        if (dup) {
+          const matchField = dup.ico && form.ico && dup.ico === form.ico.trim() ? `IČO ${dup.ico}` : `jménem „${dup.name}"`;
+          const proceed = await confirm({
+            title: "Podobný klient již existuje",
+            description: `Klient se shodným ${matchField} je již evidován. Chcete přesto vytvořit nového klienta, nebo přejít na existující záznam?`,
+            confirmLabel: "Vytvořit nového",
+            cancelLabel: "Zobrazit existujícího",
+          });
+          if (!proceed) {
+            navigate(`/clients/${dup.id}`);
+            return;
+          }
+        }
         await upsert.mutateAsync({ ...form, name: form.name!, created_by: user?.id ?? null });
       } else {
         await upsert.mutateAsync({ ...form, id: id!, name: form.name! });
@@ -268,10 +285,12 @@ export default function ClientDetail() {
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/report/${report.id}/edit`)}
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => navigate(`/report/${report.id}`)}
+                          title="Zobrazit"
                         >
-                          Zobrazit
+                          <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -282,6 +301,7 @@ export default function ClientDetail() {
           </CardContent>
         </Card>
       )}
+      <ConfirmDialog />
     </div>
   );
 }

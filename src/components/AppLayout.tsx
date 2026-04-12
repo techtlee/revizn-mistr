@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
-import { Menu } from "lucide-react";
-import { Zap } from "lucide-react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { Menu, Zap, Headset } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -14,6 +13,7 @@ const STORAGE_KEY = "sidebar-collapsed";
 
 export default function AppLayout() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) === "true";
@@ -44,6 +44,17 @@ export default function AppLayout() {
               <Zap className="w-4 h-4 text-white" />
             </div>
             <span className="font-bold text-sm tracking-wide uppercase">Revizní mistr</span>
+          </div>
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/support")}
+              title="Podpora"
+            >
+              <Headset className="w-5 h-5" />
+            </Button>
           </div>
         </header>
 
