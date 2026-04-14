@@ -45,6 +45,7 @@ export const PINNABLE_REPORT_KEYS = [
   "poveternostni_podminky",
   "rozsah_vnejsi_ochrana",
   "rozsah_vnitrni_ochrana",
+  "rozdelovnik",
 ] as const satisfies readonly (keyof ReportRow)[];
 
 export type PinnableReportKey = (typeof PINNABLE_REPORT_KEYS)[number];
@@ -64,6 +65,7 @@ const pinnedDefaultsInnerSchema = z
     poveternostni_podminky: z.string().nullable().optional(),
     rozsah_vnejsi_ochrana: z.boolean().optional(),
     rozsah_vnitrni_ochrana: z.boolean().optional(),
+    rozdelovnik: z.string().nullable().optional(),
   })
   .partial();
 

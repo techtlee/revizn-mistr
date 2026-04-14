@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom";
-import { Building2, ClipboardList, FileText, ListTree, SlidersHorizontal } from "lucide-react";
+import { Building2, ClipboardList, FileText, ListTree, SlidersHorizontal, UserCog } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const cards = [
+  {
+    to: "/library/technik",
+    title: "Profil revizního technika",
+    description: "Vaše údaje, podpis a razítko — automaticky se předvyplní do nových zpráv.",
+    icon: UserCog,
+  },
   {
     to: "/library/firmy",
     title: "Montážní firmy",

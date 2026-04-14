@@ -9,6 +9,22 @@ type Instrument = Tables<"report_instruments">;
 type Measurement = Tables<"report_measurements">;
 type SpdDevice = Tables<"report_spd_devices">;
 
+function loadImageAsDataUrl(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext("2d")!.drawImage(img, 0, 0);
+      resolve(c.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 function s(val: string | null | undefined): string {
   return val || "—";
 }
@@ -115,10 +131,11 @@ function buildHTML(
   .page * {
     font-family: Arial, Helvetica, sans-serif !important;
   }
-  h1 { font-size: 14pt; font-weight: bold; color: #004ffe; text-align: center; margin-bottom: 2px; }
-  .subtitle { text-align: center; color: #555; font-size: 8pt; margin-bottom: 16px; }
+  h1 { font-size: 18pt; font-weight: bold; color: #004ffe; text-align: center; margin-bottom: 4px; }
+  .revision-type { font-size: 13pt; font-weight: 600; text-align: center; color: #222; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #555; font-size: 8.5pt; margin-bottom: 16px; }
   .sec { margin-bottom: var(--space-4); border: 1px solid #cfd6de; border-radius: 3px; overflow: hidden; break-inside: avoid; }
-  .st { background: #004ffe; color: #fff; padding: 4px 8px; font-weight: bold; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  .st { background: #004ffe; color: #fff; padding: 5px 8px 6px; font-weight: bold; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.3; }
   .sb { padding: var(--space-3) var(--space-4); }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) 14px; }
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2) 14px; }
@@ -145,6 +162,7 @@ function buildHTML(
 </style>
 <div class="doc-flow">
   <h1>ZPRÁVA O REVIZI LPS</h1>
+  ${report.typ_revize ? `<div class="revision-type">${report.typ_revize === "výchozí" ? "Výchozí revize" : report.typ_revize === "pravidelná" ? "Pravidelná revize" : report.typ_revize === "mimořádná" ? "Mimořádná revize" : ""}</div>` : ""}
   <div class="subtitle">Revize provedena v souladu s NV 190/2022 Sb., ČSN 33 1500 a ČSN EN 62305-1 až 4 ed.2</div>
 
   <div class="sec">
@@ -439,6 +457,28 @@ export async function generatePDF(
 
     if (pages.length === 0) {
       pdf.text("PDF template is empty", 20, 20);
+    }
+
+    let logoDataUrl: string | null = null;
+    try {
+      logoDataUrl = await loadImageAsDataUrl("/logo-vitmajer.png");
+    } catch { /* logo missing – skip silently */ }
+
+    const totalPages = pdf.getNumberOfPages();
+    const logoW = 30;
+    const logoH = logoW * (47 / 222); // preserve aspect ratio
+    for (let p = 1; p <= totalPages; p++) {
+      pdf.setPage(p);
+      if (logoDataUrl) {
+        if (p === 1) {
+          pdf.addImage(logoDataUrl, "PNG", pdfWidth - logoW - 6, 5, logoW, logoH);
+        } else {
+          pdf.addImage(logoDataUrl, "PNG", (pdfWidth - logoW) / 2, 3, logoW, logoH);
+        }
+      }
+      pdf.setFontSize(8);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text(`Strana ${p} / ${totalPages}`, 105, 291, { align: "center" });
     }
 
     const name = (report.ev_cislo_zpravy || "navrh").replace(/[/\\]/g, "-");

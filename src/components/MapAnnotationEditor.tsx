@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, PencilBrush, IText } from "fabric";
+import { Canvas as FabricCanvas, Line, IText } from "fabric";
 import { Button } from "@/components/ui/button";
 import {
-  Pen,
+  Minus,
   Type,
   Undo2,
   Trash2,
@@ -21,7 +21,7 @@ function GroundIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-type Tool = "select" | "pen" | "text" | "ground";
+type Tool = "select" | "line" | "text" | "ground";
 
 interface MapAnnotationEditorProps {
   imageUrl: string;
@@ -29,7 +29,7 @@ interface MapAnnotationEditorProps {
   onSave: (annotationsJson: string) => void;
 }
 
-const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#000000"];
+const COLORS = ["#ef4444", "#22c55e", "#f97316", "#000000"];
 
 export default function MapAnnotationEditor({
   imageUrl,
@@ -90,63 +90,83 @@ export default function MapAnnotationEditor({
     fc.off("mouse:down");
     fc.off("mouse:move");
 
-    if (tool === "pen") {
-      fc.isDrawingMode = true;
-      const brush = new PencilBrush(fc);
-      brush.color = color;
-      brush.width = 3;
-      fc.freeDrawingBrush = brush;
-      fc.selection = false;
+    fc.isDrawingMode = false;
 
-      fc.on("mouse:up", () => saveSnapshot());
+    if (tool === "select") {
+      fc.selection = true;
+      fc.defaultCursor = "default";
     } else {
-      fc.isDrawingMode = false;
+      fc.selection = false;
+      fc.defaultCursor = "crosshair";
+    }
 
-      if (tool === "select") {
-        fc.selection = true;
-        fc.defaultCursor = "default";
-      } else {
-        fc.selection = false;
-        fc.defaultCursor = "crosshair";
-      }
+    if (tool === "line") {
+      let startPoint: { x: number; y: number } | null = null;
+      let tempLine: Line | null = null;
 
-      if (tool === "text") {
-        fc.on("mouse:down", (opt) => {
-          if ((opt.target as any)?.type === "i-text") return;
-          const pointer = fc.getScenePoint(opt.e);
-          const text = new IText("Text", {
-            left: pointer.x,
-            top: pointer.y,
-            fontSize: 16,
-            fill: color,
-            fontFamily: "Arial",
-            editable: true,
-          });
-          fc.add(text);
-          fc.setActiveObject(text);
-          text.enterEditing();
-          text.selectAll();
-          saveSnapshot();
+      fc.on("mouse:down", (opt) => {
+        if (opt.target) return;
+        const pointer = fc.getScenePoint(opt.e);
+        startPoint = { x: pointer.x, y: pointer.y };
+        tempLine = new Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+          stroke: color,
+          strokeWidth: 3,
+          selectable: false,
         });
-      }
+        fc.add(tempLine);
+      });
 
-      if (tool === "ground") {
-        fc.on("mouse:down", (opt) => {
-          if (opt.target) return;
-          const pointer = fc.getScenePoint(opt.e);
-          const symbol = new IText("\u23DA", {
-            left: pointer.x - 12,
-            top: pointer.y - 14,
-            fontSize: 28,
-            fill: color,
-            fontFamily: "Arial, sans-serif",
-            editable: false,
-          });
-          fc.add(symbol);
-          fc.setActiveObject(symbol);
-          saveSnapshot();
+      fc.on("mouse:move", (opt) => {
+        if (!startPoint || !tempLine) return;
+        const pointer = fc.getScenePoint(opt.e);
+        tempLine.set({ x2: pointer.x, y2: pointer.y });
+        fc.renderAll();
+      });
+
+      fc.on("mouse:up", () => {
+        if (tempLine) tempLine.set({ selectable: true });
+        startPoint = null;
+        tempLine = null;
+        saveSnapshot();
+      });
+    }
+
+    if (tool === "text") {
+      fc.on("mouse:down", (opt) => {
+        if ((opt.target as any)?.type === "i-text") return;
+        const pointer = fc.getScenePoint(opt.e);
+        const text = new IText("Text", {
+          left: pointer.x,
+          top: pointer.y,
+          fontSize: 16,
+          fill: color,
+          fontFamily: "Arial",
+          editable: true,
         });
-      }
+        fc.add(text);
+        fc.setActiveObject(text);
+        text.enterEditing();
+        text.selectAll();
+        saveSnapshot();
+      });
+    }
+
+    if (tool === "ground") {
+      fc.on("mouse:down", (opt) => {
+        if (opt.target) return;
+        const pointer = fc.getScenePoint(opt.e);
+        const symbol = new IText("\u23DA", {
+          left: pointer.x - 12,
+          top: pointer.y - 14,
+          fontSize: 28,
+          fill: color,
+          fontFamily: "Arial, sans-serif",
+          editable: false,
+        });
+        fc.add(symbol);
+        fc.setActiveObject(symbol);
+        saveSnapshot();
+      });
     }
 
     return () => {
@@ -198,7 +218,7 @@ export default function MapAnnotationEditor({
 
   const tools: { id: Tool; icon: React.FC<React.SVGProps<SVGSVGElement>>; label: string }[] = [
     { id: "select", icon: Pointer, label: "Vybrat" },
-    { id: "pen", icon: Pen, label: "Kreslení" },
+    { id: "line", icon: Minus, label: "Přímka" },
     { id: "text", icon: Type, label: "Text" },
     { id: "ground", icon: GroundIcon, label: "Uzemnění ⏚" },
   ];

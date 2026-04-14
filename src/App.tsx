@@ -31,6 +31,8 @@ import TechTemplateFormPage from "./pages/settings/templates/TechTemplateFormPag
 import DefectListPage from "./pages/settings/defects/DefectListPage";
 import DefectFormPage from "./pages/settings/defects/DefectFormPage";
 import PinnedDefaultsPage from "./pages/settings/PinnedDefaultsPage";
+import TechnicianListPage from "./pages/settings/technician/TechnicianListPage";
+import TechnicianFormPage from "./pages/settings/technician/TechnicianFormPage";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -98,6 +100,9 @@ const App = () => (
               <Route path="zavady" element={<DefectListPage />} />
               <Route path="zavady/novy" element={<DefectFormPage />} />
               <Route path="zavady/:id" element={<DefectFormPage />} />
+              <Route path="technik" element={<TechnicianListPage />} />
+              <Route path="technik/novy" element={<TechnicianFormPage />} />
+              <Route path="technik/:id" element={<TechnicianFormPage />} />
               <Route path="vychozi-hodnoty" element={<PinnedDefaultsPage />} />
               <Route path="*" element={<Navigate to="/library" replace />} />
             </Route>

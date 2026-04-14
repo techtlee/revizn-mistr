@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { to: "/library", label: "Přehled", end: true },
+  { to: "/library/technik", label: "Profil technika" },
   { to: "/library/firmy", label: "Montážní firmy" },
   { to: "/library/pristroje", label: "Přístroje" },
   { to: "/library/sablony-popisu", label: "Šablony popisu" },

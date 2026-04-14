@@ -438,6 +438,54 @@ export type Database = {
         }
         Relationships: []
       }
+      technician_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          name: string | null
+          address: string | null
+          certificate_number: string | null
+          authorization_number: string | null
+          signature_data: string | null
+          stamp_url: string | null
+          phone: string | null
+          email: string | null
+          is_default: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name?: string | null
+          address?: string | null
+          certificate_number?: string | null
+          authorization_number?: string | null
+          signature_data?: string | null
+          stamp_url?: string | null
+          phone?: string | null
+          email?: string | null
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string | null
+          address?: string | null
+          certificate_number?: string | null
+          authorization_number?: string | null
+          signature_data?: string | null
+          stamp_url?: string | null
+          phone?: string | null
+          email?: string | null
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_spd_devices: {
         Row: {
           id: string

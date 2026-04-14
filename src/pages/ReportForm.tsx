@@ -24,6 +24,7 @@ import InspectionChecklist, { CHECKLIST_E11, CHECKLIST_E12 } from "@/components/
 import { generatePDF } from "@/lib/pdfExport";
 import { useAuth } from "@/hooks/useAuth";
 import { usePinnedDefaultsQuery } from "@/hooks/usePinnedDefaults";
+import { useDefaultTechnicianProfile } from "@/hooks/useTechnicianProfiles";
 import {
   useSavedCompaniesQuery,
   useSavedInstrumentsQuery,
@@ -134,6 +135,7 @@ function getDefaultReportForm(): Partial<Report> {
     seznam_priloh: [],
     inspection_checklist: {},
     predlozene_doklady: {},
+    rozdelovnik: "Výtisk č. 1: Provozovatel\nVýtisk č. 2: Dodavatel zařízení\nVýtisk č. 3: Revizní technik",
   };
 }
 
@@ -162,6 +164,8 @@ export default function ReportForm() {
   const libInstMergedRef = useRef(false);
   const libDefectMergedRef = useRef(false);
   const { data: pinnedDefaults } = usePinnedDefaultsQuery();
+  const { data: defaultTechProfile } = useDefaultTechnicianProfile();
+  const techProfileMergedRef = useRef(false);
   const savedCompaniesQuery = useSavedCompaniesQuery();
   const savedCompanies = savedCompaniesQuery.data ?? [];
   const techTemplatesQuery = useTechTemplatesQuery();
@@ -227,6 +231,22 @@ export default function ReportForm() {
     pinnedMergedRef.current = true;
     setForm(f => mergePinnedDefaultsIntoForm({ ...f }, pinnedDefaults));
   }, [isEdit, user, pinnedDefaults]);
+
+  useEffect(() => {
+    if (isEdit || !user || defaultTechProfile === undefined || techProfileMergedRef.current) return;
+    techProfileMergedRef.current = true;
+    if (!defaultTechProfile) return;
+    const tp = defaultTechProfile;
+    setForm(f => ({
+      ...f,
+      ...(tp.name ? { revizni_technik: tp.name } : {}),
+      ...(tp.address ? { adresa_technika: tp.address } : {}),
+      ...(tp.certificate_number ? { ev_cislo_osvedceni: tp.certificate_number } : {}),
+      ...(tp.authorization_number ? { ev_cislo_opravneni: tp.authorization_number } : {}),
+      ...(tp.signature_data ? { podpis_technika: tp.signature_data } : {}),
+      ...(tp.stamp_url ? { razitko_url: tp.stamp_url } : {}),
+    }));
+  }, [isEdit, user, defaultTechProfile]);
 
   useEffect(() => {
     if (isEdit || !user || !savedCompaniesQuery.isSuccess || libCompanyMergedRef.current) return;

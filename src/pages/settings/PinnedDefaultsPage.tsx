@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -178,6 +179,17 @@ export default function PinnedDefaultsPage() {
               />
               <Label>Výchozí: vnitřní ochrana před bleskem (zapnuto)</Label>
             </div>
+          </div>
+          <div>
+            <Label>Rozdělovník</Label>
+            <p className="text-xs text-muted-foreground mb-1">Výchozí text rozdělovníku pro nové zprávy.</p>
+            <Textarea
+              className="mt-1"
+              rows={3}
+              value={p.rozdelovnik ?? ""}
+              onChange={e => setPinned({ rozdelovnik: e.target.value || undefined })}
+              placeholder={"Výtisk č. 1: Provozovatel\nVýtisk č. 2: Dodavatel zařízení\nVýtisk č. 3: Revizní technik"}
+            />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={save} disabled={upsert.isPending}>
