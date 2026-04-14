@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,10 @@ import InspectionChecklist, { CHECKLIST_E11, CHECKLIST_E12 } from "@/components/
 import { generatePDF } from "@/lib/pdfExport";
 import { useAuth } from "@/hooks/useAuth";
 import { usePinnedDefaultsQuery } from "@/hooks/usePinnedDefaults";
-import { useDefaultTechnicianProfile } from "@/hooks/useTechnicianProfiles";
+import {
+  useTechnicianProfilesQuery,
+  type TechnicianProfile,
+} from "@/hooks/useTechnicianProfiles";
 import {
   useSavedCompaniesQuery,
   useSavedInstrumentsQuery,
@@ -43,7 +46,7 @@ type Instrument = Tables<"report_instruments">;
 type Measurement = Tables<"report_measurements">;
 type SpdDevice = Tables<"report_spd_devices">;
 
-const STEPS: Step[] = [
+const BASE_STEPS: Step[] = [
   { id: "hlavicka", title: "Hlavička a identifikace", shortTitle: "Hlavička" },
   { id: "objekt", title: "Objekt a objednatel", shortTitle: "Objekt" },
   { id: "udaje", title: "Údaje o objektu", shortTitle: "Údaje" },
@@ -56,6 +59,8 @@ const STEPS: Step[] = [
   { id: "mereni", title: "Měření", shortTitle: "Měření" },
   { id: "zaver", title: "Závěr a podpisy", shortTitle: "Závěr" },
 ];
+
+const TECHNIK_STEP: Step = { id: "technik", title: "Revizní technik", shortTitle: "Technik" };
 
 const EMPTY_INSTRUMENT: Record<string, string | number | null> = {
   nazev_pristroje: null, typ_pristroje: null, vyrobni_cislo: null,
@@ -164,8 +169,13 @@ export default function ReportForm() {
   const libInstMergedRef = useRef(false);
   const libDefectMergedRef = useRef(false);
   const { data: pinnedDefaults } = usePinnedDefaultsQuery();
-  const { data: defaultTechProfile } = useDefaultTechnicianProfile();
-  const techProfileMergedRef = useRef(false);
+  const { data: techProfiles = [] } = useTechnicianProfilesQuery();
+  const [selectedTechProfileId, setSelectedTechProfileId] = useState<string | null>(null);
+
+  const steps = useMemo(
+    () => (!isEdit ? [TECHNIK_STEP, ...BASE_STEPS] : BASE_STEPS),
+    [isEdit],
+  );
   const savedCompaniesQuery = useSavedCompaniesQuery();
   const savedCompanies = savedCompaniesQuery.data ?? [];
   const techTemplatesQuery = useTechTemplatesQuery();
@@ -233,10 +243,12 @@ export default function ReportForm() {
   }, [isEdit, user, pinnedDefaults]);
 
   useEffect(() => {
-    if (isEdit || !user || defaultTechProfile === undefined || techProfileMergedRef.current) return;
-    techProfileMergedRef.current = true;
-    if (!defaultTechProfile) return;
-    const tp = defaultTechProfile;
+    if (isEdit || selectedTechProfileId !== null || techProfiles.length === 0) return;
+    const def = techProfiles.find(p => p.is_default);
+    if (def) setSelectedTechProfileId(def.id);
+  }, [isEdit, techProfiles, selectedTechProfileId]);
+
+  const applyTechProfile = useCallback((tp: TechnicianProfile) => {
     setForm(f => ({
       ...f,
       ...(tp.name ? { revizni_technik: tp.name } : {}),
@@ -246,7 +258,7 @@ export default function ReportForm() {
       ...(tp.signature_data ? { podpis_technika: tp.signature_data } : {}),
       ...(tp.stamp_url ? { razitko_url: tp.stamp_url } : {}),
     }));
-  }, [isEdit, user, defaultTechProfile]);
+  }, []);
 
   useEffect(() => {
     if (isEdit || !user || !savedCompaniesQuery.isSuccess || libCompanyMergedRef.current) return;
@@ -474,7 +486,7 @@ export default function ReportForm() {
     set("razitko_url", data.publicUrl);
   };
 
-  const goNext = () => setCurrentStep(s => Math.min(s + 1, STEPS.length - 1));
+  const goNext = () => setCurrentStep(s => Math.min(s + 1, steps.length - 1));
   const goPrev = () => setCurrentStep(s => Math.max(s - 1, 0));
 
   const skipInitialStepScroll = useRef(true);
@@ -538,9 +550,9 @@ export default function ReportForm() {
         <ChevronLeft className="w-4 h-4 mr-1" /> Předchozí
       </Button>
       <span className="text-sm text-muted-foreground shrink-0">
-        {currentStep + 1} / {STEPS.length}
+        {currentStep + 1} / {steps.length}
       </span>
-      {currentStep < STEPS.length - 1 ? (
+      {currentStep < steps.length - 1 ? (
         <Button onClick={goNext}>
           Další <ChevronRight className="w-4 h-4 ml-1" />
         </Button>
@@ -558,7 +570,8 @@ export default function ReportForm() {
   );
 
   const renderStep = () => {
-    switch (STEPS[currentStep].id) {
+    switch (steps[currentStep].id) {
+      case "technik": return renderTechnikStep();
       case "hlavicka": return renderHlavicka();
       case "objekt": return renderObjekt();
       case "udaje": return renderUdaje();
@@ -573,6 +586,79 @@ export default function ReportForm() {
       default: return null;
     }
   };
+
+  function renderTechnikStep() {
+    const handleSelect = (profile: TechnicianProfile) => {
+      setSelectedTechProfileId(profile.id);
+      applyTechProfile(profile);
+    };
+
+    return (
+      <SectionCard title="Vyberte revizního technika">
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Zvolte profil, jehož údaje se předvyplní do zprávy. Profily můžete spravovat v{" "}
+            <Link to="/library/technik" className="text-primary underline">
+              nastavení
+            </Link>
+            .
+          </p>
+          {techProfiles.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-8 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Zatím nemáte žádný profil technika.
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/library/technik/novy">Vytvořit profil</Link>
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Nebo pokračujte dále a vyplňte údaje ručně.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {techProfiles.map((p) => {
+                const selected = selectedTechProfileId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleSelect(p)}
+                    className={cn(
+                      "relative flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors",
+                      selected
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/40 hover:bg-muted/30",
+                    )}
+                  >
+                    {p.is_default && (
+                      <span className="absolute top-2 right-2 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                        Výchozí
+                      </span>
+                    )}
+                    <span className="font-medium text-sm">{p.name || "Bez jména"}</span>
+                    {p.address && (
+                      <span className="text-xs text-muted-foreground">{p.address}</span>
+                    )}
+                    {p.certificate_number && (
+                      <span className="text-xs text-muted-foreground">
+                        Osvědčení: {p.certificate_number}
+                      </span>
+                    )}
+                    {selected && (
+                      <span className="mt-1 text-xs font-medium text-primary">
+                        ✓ Vybráno
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </SectionCard>
+    );
+  }
 
   function renderHlavicka() {
     return (
@@ -1271,7 +1357,7 @@ export default function ReportForm() {
         </div>
       </div>
 
-      <FormStepper steps={STEPS} currentStep={currentStep} onStepClick={setCurrentStep} />
+      <FormStepper steps={steps} currentStep={currentStep} onStepClick={setCurrentStep} />
 
       {stepNavigation("top")}
 
