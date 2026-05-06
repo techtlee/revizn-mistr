@@ -3,6 +3,7 @@ import html2canvas from "html2canvas";
 import type { Tables } from "@/integrations/supabase/types";
 import { formatObjektAdresaOneLine } from "@/lib/objectAddress";
 import { CHECKLIST_E11, CHECKLIST_E12 } from "@/components/InspectionChecklist";
+import { type NormCategory, transformNormReference } from "@/lib/norms";
 
 type Report = Tables<"inspection_reports">;
 type Instrument = Tables<"report_instruments">;
@@ -86,11 +87,11 @@ async function renderAnnotationsToDataUrl(json: string): Promise<{ dataUrl: stri
   }
 }
 
-function buildChecklistHTML(checklist: Record<string, boolean>, groups: typeof CHECKLIST_E11): string {
+function buildChecklistHTML(checklist: Record<string, boolean>, groups: typeof CHECKLIST_E11, normCategory: NormCategory | null): string {
   return groups.map(g => `
     <div class="ck-group"><div class="ck-title">${g.title}</div>
     <table class="ck"><thead><tr><th>Parametr</th><th>Norma / článek</th><th>Stav</th></tr></thead>
-    <tbody>${g.items.map(i => checkRow(i.label, i.reference, !!checklist[i.id])).join("")}</tbody></table></div>
+    <tbody>${g.items.map(i => checkRow(i.label, transformNormReference(i.reference, normCategory), !!checklist[i.id])).join("")}</tbody></table></div>
   `).join("");
 }
 
@@ -99,6 +100,7 @@ function buildHTML(
   instruments: Instrument[],
   measurements: Measurement[],
   spdDevices: SpdDevice[],
+  normCategory: NormCategory | null,
   annotationResult?: { dataUrl: string; width: number; height: number } | null
 ): string {
   const cl = (report.inspection_checklist || {}) as Record<string, boolean>;
@@ -163,19 +165,17 @@ function buildHTML(
 <div class="doc-flow">
   <h1>ZPRÁVA O REVIZI LPS</h1>
   ${report.typ_revize ? `<div class="revision-type">${report.typ_revize === "výchozí" ? "Výchozí revize" : report.typ_revize === "pravidelná" ? "Pravidelná revize" : report.typ_revize === "mimořádná" ? "Mimořádná revize" : ""}</div>` : ""}
-  <div class="subtitle">Revize provedena v souladu s NV 190/2022 Sb., ČSN 33 1500 a ČSN EN 62305-1 až 4 ed.2</div>
+  <div class="subtitle">${getNormSubtitle(normCategory)}</div>
 
   <div class="sec">
     <div class="st">Identifikace revize</div>
     <div class="sb"><div class="grid">
       ${field("Ev. č. zprávy", s(report.ev_cislo_zpravy))}
       ${field("Typ revize", s(report.typ_revize))}
-      ${field("Výtisk č.", sNum(report.vytisk_cislo))}
-      ${field("Počet listů", sNum(report.pocet_listu))}
       ${field("Datum zahájení", sDate(report.datum_zahajeni))}
       ${field("Datum ukončení", sDate(report.datum_ukonceni))}
       ${field("Datum vypracování", sDate(report.datum_vypracovani))}
-      ${field("Počet příloh", sNum(report.pocet_priloh))}
+      ${field("Počet příloh", String((report.seznam_priloh || []).length))}
       ${field("Revizní technik", s(report.revizni_technik))}
       ${field("Adresa technika", s(report.adresa_technika))}
       ${field("Ev. č. osvědčení", s(report.ev_cislo_osvedceni))}
@@ -289,12 +289,12 @@ function buildHTML(
 
   <div class="sec">
     <div class="st">E1.1. Prohlídka – Vnější ochrana před bleskem</div>
-    <div class="sb">${buildChecklistHTML(cl, CHECKLIST_E11)}</div>
+    <div class="sb">${buildChecklistHTML(cl, CHECKLIST_E11, normCategory)}</div>
   </div>
 
   <div class="sec">
     <div class="st">E1.2. Prohlídka – Vnitřní ochrana před bleskem</div>
-    <div class="sb">${buildChecklistHTML(cl, CHECKLIST_E12)}</div>
+    <div class="sb">${buildChecklistHTML(cl, CHECKLIST_E12, normCategory)}</div>
   </div>
 
   <div class="sec">
@@ -406,18 +406,32 @@ function paginateFlow(flow: HTMLElement, measureHost: HTMLElement): HTMLDivEleme
   return pages;
 }
 
+function getNormSubtitle(normCategory: NormCategory | null): string {
+  switch (normCategory) {
+    case "newest":
+      return "Revize provedena v souladu s NV 190/2022 Sb., ČSN 33 2000-5-54 ed.3 a ČSN EN IEC 62305-1 až 4 ed.3";
+    case "current":
+      return "Revize provedena v souladu s NV 190/2022 Sb., ČSN 33 1500 a ČSN EN 62305-1 až 4 ed.2";
+    case "old":
+      return "Revize provedena v souladu s NV 190/2022 Sb., ČSN 33 1500 a ČSN 34 1390";
+    default:
+      return "Revize provedena v souladu s NV 190/2022 Sb.";
+  }
+}
+
 export async function generatePDF(
   report: Report,
   instruments: Instrument[],
   measurements: Measurement[],
-  spdDevices: SpdDevice[]
+  spdDevices: SpdDevice[],
+  normCategory: NormCategory | null = null
 ): Promise<void> {
   let annotationResult: { dataUrl: string; width: number; height: number } | null = null;
   if (report.katastr_annotations) {
     annotationResult = await renderAnnotationsToDataUrl(report.katastr_annotations);
   }
 
-  const html = buildHTML(report, instruments, measurements, spdDevices, annotationResult);
+  const html = buildHTML(report, instruments, measurements, spdDevices, normCategory, annotationResult);
 
   const wrapper = document.createElement("div");
   wrapper.style.cssText = "position:fixed;left:-10000px;top:0;";

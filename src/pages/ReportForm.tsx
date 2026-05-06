@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ArrowLeft, ArrowRight, Save, Download, Loader2, ChevronLeft, ChevronRight, FileEdit, User, Pencil, Eye } from "lucide-react";
 import { useDraftAutosave, loadLocalDraft, clearLocalDraft } from "@/hooks/useDraftAutosave";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import RepeatableTable from "@/components/RepeatableTable";
 import RepeatableList from "@/components/RepeatableList";
 import MultiSelectCheckbox from "@/components/MultiSelectCheckbox";
@@ -37,8 +37,10 @@ import {
 } from "@/hooks/useLibrary";
 import CompanyCombobox from "@/components/CompanyCombobox";
 import ObjectAddressFields from "@/components/ObjectAddressFields";
+import { NormSelector } from "@/components/NormSelector";
 import { mergePinnedDefaultsIntoForm } from "@/lib/formSettings";
 import { cn } from "@/lib/utils";
+import { type NormCategory, groupNormsByCategory, type Norm } from "@/lib/norms";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Report = Tables<"inspection_reports">;
@@ -61,6 +63,7 @@ const BASE_STEPS: Step[] = [
 ];
 
 const TECHNIK_STEP: Step = { id: "technik", title: "Revizní technik", shortTitle: "Technik" };
+const NORMY_STEP: Step = { id: "normy", title: "Typ a normy", shortTitle: "Normy" };
 
 const EMPTY_INSTRUMENT: Record<string, string | number | null> = {
   nazev_pristroje: null, typ_pristroje: null, vyrobni_cislo: null,
@@ -173,7 +176,7 @@ export default function ReportForm() {
   const [selectedTechProfileId, setSelectedTechProfileId] = useState<string | null>(null);
 
   const steps = useMemo(
-    () => (!isEdit ? [TECHNIK_STEP, ...BASE_STEPS] : BASE_STEPS),
+    () => (!isEdit ? [NORMY_STEP, TECHNIK_STEP, ...BASE_STEPS] : BASE_STEPS),
     [isEdit],
   );
   const savedCompaniesQuery = useSavedCompaniesQuery();
@@ -194,6 +197,33 @@ export default function ReportForm() {
   const [instruments, setInstruments] = useState<Record<string, string | number | null>[]>([]);
   const [measurements, setMeasurements] = useState<Record<string, string | number | null>[]>([]);
   const [spdDevices, setSpdDevices] = useState<Record<string, string | number | null>[]>([]);
+  const [selectedNormIds, setSelectedNormIds] = useState<string[]>([]);
+
+  const { data: allNorms = [] } = useQuery({
+    queryKey: ["norms"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("norms")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data as Norm[];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const selectedNormCategory = useMemo((): NormCategory | null => {
+    if (allNorms.length === 0 || selectedNormIds.length === 0) return null;
+    const grouped = groupNormsByCategory(allNorms);
+    for (const category of ["newest", "current", "old"] as NormCategory[]) {
+      const categoryIds = grouped[category].map((n) => n.id);
+      if (categoryIds.some((id) => selectedNormIds.includes(id))) {
+        return category;
+      }
+    }
+    return null;
+  }, [allNorms, selectedNormIds]);
 
   // Local autosave (debounced to localStorage)
   useDraftAutosave(
@@ -202,6 +232,7 @@ export default function ReportForm() {
     instruments,
     measurements,
     spdDevices,
+    selectedNormIds,
     currentStep,
     draftRestoreHandled && !loading,
   );
@@ -224,6 +255,7 @@ export default function ReportForm() {
         setInstruments(draft.instruments as Record<string, string | number | null>[]);
         setMeasurements(draft.measurements as Record<string, string | number | null>[]);
         setSpdDevices(draft.spdDevices as Record<string, string | number | null>[]);
+        setSelectedNormIds(draft.selectedNormIds ?? []);
         setCurrentStep(draft.currentStep ?? 0);
       } else {
         clearLocalDraft(undefined);
@@ -317,6 +349,9 @@ export default function ReportForm() {
 
         const { data: spd } = await supabase.from("report_spd_devices").select("*").eq("report_id", id).order("sort_order");
         if (spd) setSpdDevices(spd.map(({ id: _id, report_id: _rid, ...rest }) => rest as Record<string, string | number | null>));
+
+        const { data: norms } = await supabase.from("report_norms").select("norm_id").eq("report_id", id);
+        if (norms) setSelectedNormIds(norms.map(n => n.norm_id));
       } finally {
         setLoading(false);
       }
@@ -420,6 +455,13 @@ export default function ReportForm() {
       );
     }
 
+    await supabase.from("report_norms").delete().eq("report_id", reportId);
+    if (selectedNormIds.length > 0) {
+      await supabase.from("report_norms").insert(
+        selectedNormIds.map(normId => ({ report_id: reportId!, norm_id: normId }))
+      );
+    }
+
     return reportId;
   };
 
@@ -466,7 +508,7 @@ export default function ReportForm() {
       const inst = instruments.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i })) as Instrument[];
       const meas = measurements.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i })) as Measurement[];
       const spd = spdDevices.map((r, i) => ({ id: "", report_id: rid, ...r, sort_order: i })) as SpdDevice[];
-      await generatePDF(reportData, inst, meas, spd);
+      await generatePDF(reportData, inst, meas, spd, selectedNormCategory);
       toast({ title: "PDF staženo", description: "Revizní zpráva byla exportována do PDF." });
     } catch (err) {
       console.error(err);
@@ -571,6 +613,7 @@ export default function ReportForm() {
 
   const renderStep = () => {
     switch (steps[currentStep].id) {
+      case "normy": return renderNormyStep();
       case "technik": return renderTechnikStep();
       case "hlavicka": return renderHlavicka();
       case "objekt": return renderObjekt();
@@ -586,6 +629,44 @@ export default function ReportForm() {
       default: return null;
     }
   };
+
+  function renderNormyStep() {
+    return (
+      <div className="space-y-6">
+        <SectionCard title="Typ revize">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Vyberte typ revize, která bude prováděna.
+            </p>
+            <FField label="Typ revize">
+              <Select value={form.typ_revize || ""} onValueChange={v => set("typ_revize", v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Vyberte typ revize..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="výchozí">Výchozí</SelectItem>
+                  <SelectItem value="pravidelná">Pravidelná</SelectItem>
+                  <SelectItem value="mimořádná">Mimořádná</SelectItem>
+                </SelectContent>
+              </Select>
+            </FField>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Normy pro revizi">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Vyberte normy, podle kterých bude revize prováděna. Můžete vybrat více norem z různých kategorií.
+            </p>
+            <NormSelector
+              selectedNormIds={selectedNormIds}
+              onSelectionChange={setSelectedNormIds}
+            />
+          </div>
+        </SectionCard>
+      </div>
+    );
+  }
 
   function renderTechnikStep() {
     const handleSelect = (profile: TechnicianProfile) => {
@@ -677,14 +758,15 @@ export default function ReportForm() {
               </SelectContent>
             </Select>
           </FField>
-          <FField label="Výtisk č.">
-            <Input type="number" min={1} value={form.vytisk_cislo ?? ""} onChange={e => set("vytisk_cislo", e.target.value === "" ? null : Number(e.target.value))} />
-          </FField>
-          <FField label="Počet listů">
-            <Input type="number" min={1} value={form.pocet_listu ?? ""} onChange={e => set("pocet_listu", e.target.value === "" ? null : Number(e.target.value))} />
-          </FField>
           <FField label="Počet příloh">
-            <Input type="number" min={0} value={form.pocet_priloh ?? ""} onChange={e => set("pocet_priloh", e.target.value === "" ? null : Number(e.target.value))} />
+            <Input
+              type="number"
+              min={0}
+              value={(form.seznam_priloh || []).length}
+              readOnly
+              className="bg-muted cursor-not-allowed"
+              title="Automaticky podle počtu příloh v seznamu"
+            />
           </FField>
           <FField label="Datum zahájení revize">
             <Input type="date" value={form.datum_zahajeni || ""} onChange={e => set("datum_zahajeni", e.target.value)} />
@@ -1123,6 +1205,7 @@ export default function ReportForm() {
           groups={CHECKLIST_E11}
           values={checklist}
           onChange={setChecklist}
+          normCategory={selectedNormCategory}
         />
       </SectionCard>
     );
@@ -1135,6 +1218,7 @@ export default function ReportForm() {
           groups={CHECKLIST_E12}
           values={checklist}
           onChange={setChecklist}
+          normCategory={selectedNormCategory}
         />
       </SectionCard>
     );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, Line, IText } from "fabric";
+import { Canvas as FabricCanvas, Line, IText, Circle } from "fabric";
 import { Button } from "@/components/ui/button";
 import {
   Minus,
@@ -8,6 +8,7 @@ import {
   Trash2,
   Save,
   Pointer,
+  Circle as CircleIcon,
 } from "lucide-react";
 
 function GroundIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -21,7 +22,7 @@ function GroundIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-type Tool = "select" | "line" | "text" | "ground";
+type Tool = "select" | "line" | "circle" | "text" | "ground";
 
 interface MapAnnotationEditorProps {
   imageUrl: string;
@@ -131,6 +132,48 @@ export default function MapAnnotationEditor({
       });
     }
 
+    if (tool === "circle") {
+      const DEFAULT_RADIUS = 10;
+      let startPoint: { x: number; y: number } | null = null;
+      let tempCircle: Circle | null = null;
+
+      fc.on("mouse:down", (opt) => {
+        if (opt.target) return;
+        const pointer = fc.getScenePoint(opt.e);
+        startPoint = { x: pointer.x, y: pointer.y };
+        tempCircle = new Circle({
+          left: pointer.x,
+          top: pointer.y,
+          radius: DEFAULT_RADIUS,
+          stroke: color,
+          strokeWidth: 3,
+          fill: "transparent",
+          selectable: false,
+          originX: "center",
+          originY: "center",
+        });
+        fc.add(tempCircle);
+        fc.renderAll();
+      });
+
+      fc.on("mouse:move", (opt) => {
+        if (!startPoint || !tempCircle) return;
+        const pointer = fc.getScenePoint(opt.e);
+        const dx = pointer.x - startPoint.x;
+        const dy = pointer.y - startPoint.y;
+        const radius = Math.max(DEFAULT_RADIUS, Math.sqrt(dx * dx + dy * dy));
+        tempCircle.set({ radius });
+        fc.renderAll();
+      });
+
+      fc.on("mouse:up", () => {
+        if (tempCircle) tempCircle.set({ selectable: true });
+        startPoint = null;
+        tempCircle = null;
+        saveSnapshot();
+      });
+    }
+
     if (tool === "text") {
       fc.on("mouse:down", (opt) => {
         if ((opt.target as any)?.type === "i-text") return;
@@ -219,6 +262,7 @@ export default function MapAnnotationEditor({
   const tools: { id: Tool; icon: React.FC<React.SVGProps<SVGSVGElement>>; label: string }[] = [
     { id: "select", icon: Pointer, label: "Vybrat" },
     { id: "line", icon: Minus, label: "Přímka" },
+    { id: "circle", icon: CircleIcon, label: "Kruh" },
     { id: "text", icon: Type, label: "Text" },
     { id: "ground", icon: GroundIcon, label: "Uzemnění ⏚" },
   ];

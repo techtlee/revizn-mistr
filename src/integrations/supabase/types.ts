@@ -603,6 +603,75 @@ export type Database = {
           },
         ]
       }
+      norms: {
+        Row: {
+          id: string
+          code: string
+          name: string | null
+          category: "newest" | "current" | "old"
+          category_label: string
+          is_active: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          name?: string | null
+          category: "newest" | "current" | "old"
+          category_label: string
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          name?: string | null
+          category?: "newest" | "current" | "old"
+          category_label?: string
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      report_norms: {
+        Row: {
+          id: string
+          report_id: string
+          norm_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          norm_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          norm_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_norms_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_norms_norm_id_fkey"
+            columns: ["norm_id"]
+            isOneToOne: false
+            referencedRelation: "norms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -5,6 +5,7 @@ export interface DraftPayload {
   instruments: Record<string, unknown>[];
   measurements: Record<string, unknown>[];
   spdDevices: Record<string, unknown>[];
+  selectedNormIds?: string[];
   currentStep: number;
   savedAt: number;
 }
@@ -38,6 +39,7 @@ export function useDraftAutosave(
   instruments: Record<string, unknown>[],
   measurements: Record<string, unknown>[],
   spdDevices: Record<string, unknown>[],
+  selectedNormIds: string[],
   currentStep: number,
   enabled: boolean,
 ) {
@@ -53,12 +55,13 @@ export function useDraftAutosave(
         instruments,
         measurements,
         spdDevices,
+        selectedNormIds,
         currentStep,
         savedAt: Date.now(),
       };
       localStorage.setItem(draftKey(reportId), JSON.stringify(payload));
     } catch { /* storage full or unavailable */ }
-  }, [reportId, form, instruments, measurements, spdDevices, currentStep]);
+  }, [reportId, form, instruments, measurements, spdDevices, selectedNormIds, currentStep]);
 
   useEffect(() => {
     if (!enabled) return;

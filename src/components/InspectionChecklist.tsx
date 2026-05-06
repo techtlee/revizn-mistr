@@ -1,6 +1,7 @@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { type NormCategory, transformNormReference } from "@/lib/norms";
 
 export interface ChecklistItem {
   id: string;
@@ -17,9 +18,10 @@ interface InspectionChecklistProps {
   groups: ChecklistGroup[];
   values: Record<string, boolean>;
   onChange: (values: Record<string, boolean>) => void;
+  normCategory?: NormCategory | null;
 }
 
-export default function InspectionChecklist({ groups, values, onChange }: InspectionChecklistProps) {
+export default function InspectionChecklist({ groups, values, onChange, normCategory = null }: InspectionChecklistProps) {
   const toggle = (id: string) => {
     onChange({ ...values, [id]: !values[id] });
   };
@@ -34,6 +36,7 @@ export default function InspectionChecklist({ groups, values, onChange }: Inspec
           <div className="space-y-3">
             {group.items.map((item) => {
               const checked = values[item.id] ?? false;
+              const displayReference = transformNormReference(item.reference, normCategory);
               return (
                 <div
                   key={item.id}
@@ -50,7 +53,7 @@ export default function InspectionChecklist({ groups, values, onChange }: Inspec
                       {item.label}
                     </Label>
                     <p className="text-xs text-muted-foreground mt-0.5 break-words">
-                      {item.reference}
+                      {displayReference}
                     </p>
                   </div>
                   <Badge
